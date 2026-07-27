@@ -569,12 +569,40 @@ const state={t:0,dur:8,playing:false,tool:'select',recording:false,ar:1.7778,sho
 
 /* ------- characters ------- */
 const chars=[]; let charBase=null, charCount=0;
-const LEAD_COLS=[0x4FB0C6,0xD4737F,0x7FC46A,0xB08BE0,0xE0A03C,0x5F8FD9];
+const LEAD_COLS=[['Cyan',0x4FB0C6],['Rose',0xD4737F],['Green',0x7FC46A],
+                 ['Violet',0xB08BE0],['Amber',0xE0A03C],['Blue',0x5F8FD9]];
 const CROWD_COL=0x8f959a;
+function colorName(c){
+  if(!c)return '—';
+  if(c.crowd)return 'Grey';
+  if(c.colorIdx!=null&&LEAD_COLS[c.colorIdx])return LEAD_COLS[c.colorIdx][0];
+  const hex=c.color?c.color.getHex():null;
+  const f2=LEAD_COLS.find(x=>x[1]===hex);
+  return f2?f2[0]:'—';
+}
+function colorHexOf(c){
+  if(c.crowd)return CROWD_COL;
+  if(c.colorIdx!=null&&LEAD_COLS[c.colorIdx])return LEAD_COLS[c.colorIdx][1];
+  return CROWD_COL;
+}
 function recolorCast(){
-  let li=0;
+  // two leads may never share a colour — a later duplicate gives way and is reassigned
+  const seen={};
   chars.forEach(c=>{
-    const hex=c.crowd?CROWD_COL:LEAD_COLS[(li++)%LEAD_COLS.length];
+    if(c.crowd||c.colorIdx==null)return;
+    if(seen[c.colorIdx])c.colorIdx=null; else seen[c.colorIdx]=true;
+  });
+  const taken={};
+  chars.forEach(c=>{if(!c.crowd&&c.colorIdx!=null)taken[c.colorIdx]=true;});
+  let next=0;
+  chars.forEach(c=>{
+    if(c.crowd||c.colorIdx!=null)return;
+    while(taken[next]&&next<LEAD_COLS.length)next++;
+    c.colorIdx=(next<LEAD_COLS.length)?next:(Object.keys(taken).length%LEAD_COLS.length);
+    taken[c.colorIdx]=true;next++;
+  });
+  chars.forEach(c=>{
+    const hex=colorHexOf(c);
     c.color=new THREE.Color(hex);
     (c.meshes||[]).forEach(mm=>{
       const ms=Array.isArray(mm.material)?mm.material:[mm.material];
@@ -2172,12 +2200,39 @@ function renderProps(){
     propBody.appendChild(h(`<div class="row"><label>Path</label><div class="val">${c.len.toFixed(1)} m</div></div>`));
     const aw=allowedModes();
     if(aw.why)propBody.appendChild(h('<div class="sub" style="margin-top:0;color:var(--dim)">'+aw.why+'</div>'));
+    propBody.appendChild(h('<div class="row" style="margin-top:0"><label>Colour</label><div class="val">'+
+      colorName(c)+'</div></div>'));
+    if(!c.crowd){
+      const sw=h('<div style="display:flex;gap:3px;margin-bottom:7px"></div>');
+      LEAD_COLS.forEach(([nm,hex],ci)=>{
+        const used=chars.some(o=>o!==c&&!o.crowd&&o.colorIdx===ci);
+        const b=h('<button title="'+nm+(used?' — already taken':'')+
+          '" style="flex:1;height:20px;padding:0;background:#'+hex.toString(16).padStart(6,'0')+
+          ';border-color:'+(c.colorIdx===ci?'var(--accent)':'var(--line)')+
+          ';opacity:'+(used?'.4':'1')+'"></button>');
+        b.onclick=()=>{
+          pushUndo();
+          // claiming a colour releases it from whoever held it
+          chars.forEach(o=>{if(o!==c&&!o.crowd&&o.colorIdx===ci)o.colorIdx=null;});
+          c.colorIdx=ci;
+          recolorCast();state.thumbsDirty=true;renderProps();
+        };
+        sw.appendChild(b);
+      });
+      propBody.appendChild(sw);
+    }
     const cast=h('<div class="seg"><button data-c="lead">Lead</button><button data-c="crowd">Crowd</button></div>');
     propBody.appendChild(cast);
     cast.querySelectorAll('[data-c]').forEach(b=>{
       b.classList.toggle('on',(b.dataset.c==='crowd')===!!c.crowd);
-      b.onclick=()=>{pushUndo();c.crowd=(b.dataset.c==='crowd');recolorCast();rebuildPath(c);
-        state.thumbsDirty=true;renderProps();};
+      b.onclick=()=>{
+        pushUndo();
+        const wasCrowd=c.crowd;
+        c.crowd=(b.dataset.c==='crowd');
+        if(wasCrowd&&!c.crowd)c.colorIdx=null;   // pick a fresh, unused colour
+        recolorCast();rebuildPath(c);
+        state.thumbsDirty=true;renderProps();
+      };
     });
     propBody.appendChild(slider('Scale',.6,1.6,.01,c.root.scale.x,v=>v.toFixed(2)+'×',v=>c.root.scale.setScalar(v)));
     const pth=h('<button style="width:100%;margin-top:6px" title="Click points on the floor to build a walk">Draw a walk path for '+c.name+'</button>');
@@ -2333,7 +2388,8 @@ function renderList(){
       n:c.name+(c.live?'  ● LIVE':(c.used?'':'  ·unused')),
       col:c.live?'#E0523C':(c.used?'#E8A33D':'#5b6367'),keep:!scoped||c.live}))
     .filter(r=>r.keep);
-  const charAll=chars.map(c=>({s:{t:'char',c},n:c.name+(c.crowd?' ·bg':''),
+  const charAll=chars.map(c=>({s:{t:'char',c},
+      n:c.name+' <span style="opacity:.42">'+colorName(c)+(c.crowd?' · bg':'')+'</span>',
       col:'#'+c.color.getHexString(),keep:!scoped||inFrame(c.root)}));
   const charRows=charAll.filter(r=>r.keep);
   const propAll=props.map(o=>({s:{t:'prop',o},
@@ -3088,7 +3144,8 @@ function snapshot(){
       mv:o.mover?{pts:o.mover.points.map(q=>[q.x,q.z]),sp:o.mover.speed,
         or:o.mover.orient,ar:o.mover.arc,by:o.mover.baseY}:null})),
     chars:chars.map(c=>({p:[c.root.position.x,c.root.position.z],r:c.root.rotation.y,s:c.root.scale.x,
-      g:c.gait,sp:c.speed,cr:!!c.crowd,lk:!!c.locked,pts:c.points.map(p=>[p.x,p.z])})),
+      g:c.gait,sp:c.speed,cr:!!c.crowd,lk:!!c.locked,ci:c.colorIdx,
+      pts:c.points.map(p=>[p.x,p.z])})),
     lights:lights.map(l=>({p:[l.group.position.x,l.group.position.y,l.group.position.z],
       q:[l.group.quaternion.x,l.group.quaternion.y,l.group.quaternion.z,l.group.quaternion.w],
       c:l.color,i:l.intensity,d:l.dist,a:l.angle,pe:l.penumbra,sh:l.shadows,lk:!!l.locked})),
@@ -3130,7 +3187,7 @@ function restoreSnap(json){
   });
   chars.forEach((c,i)=>{const a=d.chars[i];
     c.root.position.set(a.p[0],0,a.p[1]);c.root.rotation.y=a.r;c.root.scale.setScalar(a.s);
-    c.gait=a.g;c.speed=a.sp;c.crowd=a.cr;c.locked=!!a.lk;
+    c.gait=a.g;c.speed=a.sp;c.crowd=a.cr;c.locked=!!a.lk;c.colorIdx=a.ci;
     c.points=a.pts.map(p=>new V3(p[0],0,p[1]));rebuildPath(c);});
   recolorCast();
   cams.forEach((c,i)=>{const a=d.cams[i];
@@ -4018,7 +4075,7 @@ function serializeScene(){
         orient:o.mover.orient,arc:o.mover.arc,baseY:o.mover.baseY}:undefined})),
     chars:chars.map(c=>({name:c.name,pos:[c.root.position.x,c.root.position.z],
       rotY:c.root.rotation.y,scale:c.root.scale.x,gait:c.gait,speed:c.speed,crowd:!!c.crowd,
-      locked:!!c.locked,
+      locked:!!c.locked,colorIdx:c.colorIdx,
       path:c.points.map(p=>[p.x,p.z]),
       meta:(c.meta||[]).map(m=>({gait:m.gait,action:m.action}))})),
     lights:lights.map(l=>({kind:l.kind,
@@ -4065,6 +4122,7 @@ function loadScene(i,keep){
     if(cd.rotY!=null)c.root.rotation.y=cd.rotY;
     if(cd.scale)c.root.scale.setScalar(cd.scale);
     if(cd.locked)c.locked=true;
+    if(cd.colorIdx!=null)c.colorIdx=cd.colorIdx;
     c.gait=cd.gait||'walk';
     c.speed=cd.speed!=null?cd.speed:SPEEDS[c.gait]||0;
     c.points=(cd.path||[]).map(p=>new V3(p[0],0,p[1]));
