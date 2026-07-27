@@ -1313,6 +1313,10 @@ const PROP_DEFS={
   bedroll:{n:'Bedroll',ic:'▬',d:'sleeper on the floor'},
   bin:{n:'Bin',ic:'⊔',d:'platform dustbin'},
   scooter:{n:'Scooter',ic:'⊙',d:'two wheels, one office'},
+  bench:{n:'Bench',ic:'▤',d:'2 m, seat and back'},
+  bardesk:{n:'Bar desk',ic:'▥',d:'sloped desk with bench'},
+  witnessbox:{n:'Railed box',ic:'▣',d:'witness box or dock'},
+  filestack:{n:'File bundle',ic:'▢',d:'tied court files'},
   sign:{n:'Hanging sign',ic:'⊤',d:'platform number'},
   plant:{n:'Pot plant',ic:'❦',d:'balcony greenery'},
   dryrack:{n:'Dry rack',ic:'≣',d:'clothes airer'},
@@ -1536,6 +1540,55 @@ function buildProp(kind){
     bg.position.set(.05,.15,-1.12);m.add(bg);
   }
   else if(kind==='scooter'){ m=scooter(0,0,0,0); }
+  else if(kind==='bench'){
+    /* one object, not five. occupant faces -Z */
+    m=new THREE.Group();
+    const w=PROP_MAT.clone();
+    const seat=new THREE.Mesh(new THREE.BoxGeometry(2,.09,.46),w);seat.position.y=.45;m.add(seat);
+    const back=new THREE.Mesh(new THREE.BoxGeometry(2,.5,.08),w);back.position.set(0,.74,.26);m.add(back);
+    const cap=new THREE.Mesh(new THREE.BoxGeometry(2,.06,.11),w);cap.position.set(0,1.0,.26);m.add(cap);
+    [-.88,0,.88].forEach(x=>{
+      const l=new THREE.Mesh(new THREE.BoxGeometry(.09,.42,.42),w);
+      l.position.set(x,.21,0);m.add(l);});
+  }
+  else if(kind==='bardesk'){
+    m=new THREE.Group();
+    const w=PROP_MAT.clone();
+    const top=new THREE.Mesh(new THREE.BoxGeometry(3,.06,.62),w);
+    top.position.set(0,.79,-.34);top.rotation.x=.13;m.add(top);
+    const ap=new THREE.Mesh(new THREE.BoxGeometry(3,.5,.09),w);ap.position.set(0,.52,-.62);m.add(ap);
+    const seat=new THREE.Mesh(new THREE.BoxGeometry(3,.09,.44),w);seat.position.set(0,.45,.42);m.add(seat);
+    const back=new THREE.Mesh(new THREE.BoxGeometry(3,.48,.08),w);back.position.set(0,.73,.66);m.add(back);
+    [-1.36,0,1.36].forEach(x=>{
+      const l=new THREE.Mesh(new THREE.BoxGeometry(.09,.5,.5),w);l.position.set(x,.25,-.34);m.add(l);
+      const l2=new THREE.Mesh(new THREE.BoxGeometry(.09,.42,.4),w);l2.position.set(x,.21,.42);m.add(l2);});
+  }
+  else if(kind==='witnessbox'){
+    m=new THREE.Group();
+    const w=PROP_MAT.clone();
+    const pl=new THREE.Mesh(new THREE.BoxGeometry(2,.44,2),w);pl.position.y=.22;m.add(pl);
+    const front=new THREE.Mesh(new THREE.BoxGeometry(2,1.12,.12),w);front.position.set(0,1.0,.94);m.add(front);
+    const cap=new THREE.Mesh(new THREE.BoxGeometry(2.1,.12,.24),w);cap.position.set(0,1.62,.94);m.add(cap);
+    [-.94,.94].forEach(x=>{
+      const sd=new THREE.Mesh(new THREE.BoxGeometry(.12,1.12,2),w);sd.position.set(x,1.0,0);m.add(sd);
+      const sc=new THREE.Mesh(new THREE.BoxGeometry(.22,.12,2),w);sc.position.set(x,1.62,0);m.add(sc);});
+  }
+  else if(kind==='filestack'){
+    m=new THREE.Group();
+    const cols=[0x8a3a2e,0x7d6a4e,0x4a4438,0x8d7a58,0x6a2f28];
+    const n=3+Math.floor(rnd()*4);
+    for(let i=0;i<n;i++){
+      const b=new THREE.Mesh(
+        new THREE.BoxGeometry(.34+rnd()*.09,.07+rnd()*.035,.26+rnd()*.07),
+        new THREE.MeshStandardMaterial({color:cols[Math.floor(rnd()*cols.length)],roughness:.96}));
+      b.position.set((rnd()-.5)*.06,.04+i*.088,(rnd()-.5)*.06);
+      b.rotation.y=(rnd()-.5)*.22;
+      m.add(b);
+    }
+    const tie=new THREE.Mesh(new THREE.BoxGeometry(.05,n*.09,.32),
+      new THREE.MeshStandardMaterial({color:0xd8d2c0,roughness:1}));
+    tie.position.y=n*.044;m.add(tie);
+  }
   else if(kind==='bin'){
     m=new THREE.Group();
     const b=new THREE.Mesh(new THREE.CylinderGeometry(.24,.2,.72,10),
@@ -1619,11 +1672,12 @@ function makeProp(kind){
   const y=kind==='column'?1.2:kind==='table'?.74:kind==='wall'?1.2:
     (kind==='railing'||kind==='plant'||kind==='dryrack'||kind==='fan'||kind==='tree'||
      kind==='stall'||kind==='cart'||kind==='seated'||kind==='bedroll'||kind==='bin'||
-     kind==='scooter')?0:
+     kind==='scooter'||kind==='bench'||kind==='bardesk'||kind==='witnessbox'||
+     kind==='filestack')?0:
     kind==='sign'?3.3:kind==='fan'?2.42:.5;
   if(kind==='door'||kind==='stairs'||kind==='railing'||kind==='plant'||kind==='dryrack'||kind==='fan'||kind==='tree'||
      kind==='stall'||kind==='cart'||kind==='seated'||kind==='bedroll'||kind==='bin'||kind==='sign'||
-     kind==='scooter')m.position.set((Math.random()-.5)*5,0,(Math.random()-.5)*5);
+     kind==='scooter'||kind==='bench'||kind==='bardesk'||kind==='witnessbox'||kind==='filestack')m.position.set((Math.random()-.5)*5,0,(Math.random()-.5)*5);
   else m.position.set((Math.random()-.5)*5,y,(Math.random()-.5)*5);
   Object.assign(m.userData,{name:PROP_DEFS[kind].n+' '+(props.length+1),kind:'prop',kindKey:kind,
     locked:(kind==='floor')});
@@ -3992,7 +4046,9 @@ const PLATFORM=[
   WL(9.5,4.4,9,0,{type:'door',cx:0,ow:.35,oh:2.4,sill:0},1.5),
   BLK(-3.4,2.85,3.9,3.6,1.25,.14),                               // departure board
   BLK(-3.4,1.9,3.95,.12,.9,.12),
-  ...BENCH(-6.5,3.1), ...BENCH(3.5,3.1), ...BENCH(9,3.1),
+  {kind:'bench',pos:[-6.5,0,3.1],rotY:3.1416,scale:[.95,1,1]},
+  {kind:'bench',pos:[3.5,0,3.1],rotY:3.1416,scale:[.95,1,1]},
+  {kind:'bench',pos:[9,0,3.1],rotY:3.1416,scale:[.95,1,1]},
   // fixtures: the station does business
   {kind:'stall',pos:[-11.5,0,3.3],rotY:0,scale:[1,1,1]},          // book stall
   {kind:'stall',pos:[6.8,0,3.3],rotY:0,scale:[1,1,1]},            // snacks
@@ -4218,23 +4274,14 @@ const FILES=(x,y,z,n)=>{
    the witness box on her right, the dock on her left, both railed platforms.
    The bar sits at long desks in rows facing her, not at two islands.
    Fluorescent tubes overhead doing the work; the windows barely register. */
-const RAILBOX=(x,z,side)=>[
-  BLK(x,.22,z,2.0,.44,2.0),                                   // platform
-  BLK(x,1.0,z+.94,2.0,1.12,.12),                              // front rail
-  BLK(x-side*.94,1.0,z,.12,1.12,2.0),                         // inner rail
-  BLK(x+side*.94,1.0,z,.12,1.12,2.0),                         // outer rail
-  BLK(x,1.62,z+.94,2.0,.12,.22)];                             // capping
-const BARROW=(z)=>[
-  BLK(0,.44,z,11.0,.06,.72), BLK(0,.24,z-.02,11.0,.44,.1),    // sloped desk + apron
-  BLK(0,.42,z+.86,11.0,.1,.44), BLK(0,.71,z+1.12,11.0,.5,.08),// bench behind it
-  BLK(-5.3,.21,z+.86,.09,.42,.42), BLK(0,.21,z+.86,.09,.42,.42), BLK(5.3,.21,z+.86,.09,.42,.42)];
-const GALROW=(z)=>[
-  BLK(0,.42,z,11.6,.1,.46), BLK(0,.72,z+.27,11.6,.5,.08),
-  BLK(-5.5,.21,z,.09,.42,.42), BLK(0,.21,z,.09,.42,.42), BLK(5.5,.21,z,.09,.42,.42)];
+const BOX=(x,z,r)=>({kind:'witnessbox',pos:[x,0,z],rotY:r||0,scale:[1,1,1]});
+const BAR=(z)=>({kind:'bardesk',pos:[0,0,z],rotY:0,scale:[3.67,1,1]});
+const GAL=(z)=>({kind:'bench',pos:[0,0,z],rotY:3.1416,scale:[5.8,1,1]});
+const STACK=(x,y,z)=>({kind:'filestack',pos:[x,y,z],rotY:0,scale:[1,1,1]});
 
 const COURT=[
   {kind:'floor',pos:[0,-.1,-.25],rotY:0,scale:[14.2,.2,14.9]},
-  WL(-3.5,-7.5,7,0,{type:'arch',cx:.35,ow:.69,oh:1.49,sill:0},1.75),   // panelled screen, arched
+  WL(-3.5,-7.5,7,0,{type:'arch',cx:.35,ow:.69,oh:1.49,sill:0},1.75),
   WL(3.5,-7.5,7,0,null,1.75),
   WL(-7,-4,7,R,{type:'window',cx:0,ow:.94,oh:1.09,sill:.74},1.75),
   WL(-7,3.25,7.5,R,{type:'window',cx:0,ow:.88,oh:1.09,sill:.74},1.75),
@@ -4244,33 +4291,30 @@ const COURT=[
 
   BLK(0,.35,-6.3,7.4,.7,2.2),                                 // the dais
   BLK(0,1.15,-5.95,5.6,.9,1.0),                               // the bench
-  BLK(0,1.32,-5.44,5.6,1.24,.12),                             // its front panel
+  BLK(0,1.32,-5.44,5.6,1.24,.12),
   BLK(0,1.72,-6.98,1.1,1.5,.18),                              // high-backed chair
-  BLK(-1.7,1.66,-5.9,.44,.14,.32),                            // the case file
-  BLK(-1.72,1.78,-5.86,.4,.1,.28),
-  BLK(1.6,1.64,-5.9,.3,.1,.22),
+  STACK(-1.7,1.6,-5.9), STACK(1.5,1.6,-5.9),                  // the case file, and the rest
   BLK(0,3.25,-7.42,1.1,.85,.07),                              // emblem
   BLK(-2.9,3.45,-7.42,.42,.42,.08),                           // wall clock
   BLK(2.6,3.0,-7.42,.5,.66,.06), BLK(3.7,3.0,-7.42,.5,.66,.06),
 
-  ...RAILBOX(4.3,-4.6,1),                                     // witness box, her right
-  ...RAILBOX(-4.3,-4.6,-1),                                   // the dock, her left
-  BLK(-6.35,1.05,-6.2,1.1,2.1,.62),                           // steel almirah
-  BLK(-6.35,2.28,-6.2,1.0,.36,.5),
+  BOX(4.3,-4.6,0),                                            // witness box, her right
+  BOX(-4.3,-4.6,0),                                           // the dock, her left
+  BLK(-6.35,1.05,-6.2,1.1,2.1,.62), BLK(-6.35,2.28,-6.2,1.0,.36,.5),
 
   BLK(0,.4,-4.5,3.6,.8,1.05),                                 // clerk and stenographer
-  ...FILES(-1.5,.8,-4.6,8), ...FILES(.7,.8,-4.6,4),
+  STACK(-1.4,.8,-4.6), STACK(.6,.8,-4.6),
   BLK(.9,.83,-4.2,.34,.02,.25),                               // the will, in its sleeve
 
-  ...BARROW(-2.5), ...BARROW(-1.0), ...BARROW(.5),            // the bar, in rows
-  ...FILES(-4.2,.47,-2.6,10), ...FILES(-2.0,.47,-2.6,6),
-  ...FILES(2.2,.47,-2.6,12), ...FILES(4.4,.47,-2.6,6),        // her files, and everyone's
-  ...FILES(3.6,0,-1.7,8),                                     // and the rest on the floor
-  ...FILES(-3.0,.47,-1.1,6), ...FILES(3.0,.47,-1.1,5),
+  BAR(-2.5), BAR(-1.0), BAR(.5),                              // the bar, in rows
+  STACK(-4.2,.82,-2.85), STACK(-2.0,.82,-2.85),
+  STACK(2.2,.82,-2.85), STACK(3.4,.82,-2.85), STACK(4.4,.82,-2.85),
+  STACK(3.7,0,-1.75), STACK(4.3,0,-1.75),                     // hers, on the floor
+  STACK(-3.0,.82,-1.35), STACK(3.0,.82,-1.35),
 
   {kind:'railing',pos:[-3.2,0,1.9],rotY:0,scale:[1.9,1,1]},
   {kind:'railing',pos:[3.2,0,1.9],rotY:0,scale:[1.9,1,1]},
-  ...GALROW(2.9), ...GALROW(4.1), ...GALROW(5.3),
+  GAL(3.16), GAL(4.36), GAL(5.56),
 
   {kind:'fan',pos:[0,4.15,-3.6],rotY:0,scale:[1.2,1,1.2]},
   {kind:'fan',pos:[0,4.15,0],rotY:0,scale:[1.2,1,1.2]},
@@ -4291,11 +4335,11 @@ const COURT_LIGHTS=[
   {kind:'point',name:'Tube over the gallery',pos:[0,3.9,3.2],color:0xE4F2D6,intensity:56,dist:14},
   {kind:'point',name:'Witness box tube',pos:[4.3,3.9,-4.6],color:0xE4F2D6,intensity:34,dist:9}];
 
-const GALLERY=[[-4.4,2.9],[-3.3,2.9],[-1.9,2.9],[1.6,2.9],[3.1,2.9],[4.5,2.9],
-               [-3.8,4.1],[-2.2,4.1],[.9,4.1],[2.8,4.1],[-2.6,5.3],[1.4,5.3]]
+const GALLERY=[[-4.4,3.16],[-3.3,3.16],[-1.9,3.16],[1.6,3.16],[3.1,3.16],[4.5,3.16],
+               [-3.8,4.36],[-2.2,4.36],[.9,4.36],[2.8,4.36],[-2.6,5.56],[1.4,5.56]]
   .map((p,i)=>({name:'Public '+(i+1),pos:[p[0],p[1]],rotY:3.1416,gait:'still',speed:0,
     path:[],crowd:true,pose:'sit',seatH:.47}));
-const BARSEATS=[[-4.6,-1.6],[-3.4,-1.6],[3.4,-1.6],[4.6,-1.6],[-4.0,-.1],[4.0,-.1],[-1.2,1.4],[1.2,1.4]]
+const BARSEATS=[[-4.6,-2.08],[-3.4,-2.08],[3.4,-2.08],[4.6,-2.08],[-4.0,-.58],[4.0,-.58],[-1.2,.92],[1.2,.92]]
   .map((p,i)=>({name:'Advocate '+(i+1),pos:[p[0],p[1]],rotY:3.1416,gait:'still',speed:0,
     path:[],crowd:true,pose:'sit',seatH:.47}));
 
@@ -4305,9 +4349,9 @@ const CAST_COURT=[
   {name:'Bhaskara Rao',pos:[-2.1,-3.05],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:1},
   {name:'Padma',pos:[2.1,-3.05],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:0},
   {name:'The expert',pos:[4.3,-4.5],y:.44,rotY:-.55,gait:'still',speed:0,path:[],colorIdx:5},
-  {name:'Girish',pos:[-2.4,-1.6],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:3,
+  {name:'Girish',pos:[-2.4,-2.08],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:3,
    pose:'sit',seatH:.47},
-  {name:'Chandu',pos:[2.4,-1.6],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:2,
+  {name:'Chandu',pos:[2.4,-2.08],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:2,
    pose:'sit',seatH:.47},
   {name:'Court officer',pos:[-1.0,-3.9],rotY:0,gait:'still',speed:0,path:[],crowd:true},
   {name:'Constable',pos:[-5.7,-4.4],rotY:.5,gait:'still',speed:0,path:[],crowd:true}
@@ -4323,7 +4367,8 @@ const CORRIDOR=[
   BLK(0,3.9,-2,7.4,.25,26),
   COL(-3.0,-7.5),COL(-3.0,-2.5),COL(-3.0,2.5),
   COL(3.0,-7.5),COL(3.0,-2.5),COL(3.0,2.5),
-  ...BENCH(-2.4,-4.2), ...BENCH(-2.4,1.4),
+  {kind:'bench',pos:[-2.4,0,-4.2],rotY:1.5708,scale:[1.4,1,1]},
+  {kind:'bench',pos:[-2.4,0,1.4],rotY:1.5708,scale:[1.4,1,1]},
   BLK(2.6,.9,-3.0,.1,1.8,1.2),
   ...FILES(2.3,.55,1.0,4),
   {kind:'scooter',pos:[1.4,0,3.2],rotY:1.9,scale:[1,1,1]},
@@ -4344,7 +4389,7 @@ const COURT_SCENES=[
  cams:[
   {pos:[0,2.0,6.3],mode:'static',focal:24,shake:.24,lookAt:[0,1.6,-6.0],focus:10,dof:.28},
   {pos:[.5,1.6,-3.0],mode:'static',focal:50,shake:.22,lookAt:[0,1.95,-5.9],focus:3.0,dof:.9},
-  {pos:[0,1.5,-4.2],mode:'static',focal:28,shake:.2,lookAt:[0,1.08,-1.6],focus:2.7,dof:.7},
+  {pos:[0,1.5,-4.4],mode:'static',focal:28,shake:.2,lookAt:[0,1.08,-2.08],focus:2.5,dof:.7},
   {pos:[.4,1.2,-3.5],mode:'static',focal:85,shake:.18,lookAt:[.9,.85,-4.2],focus:1.0,dof:1.5}],
  shots:[
   {name:'Courtroom master',cam:0,t0:0,t1:4.0,intent:'The room is older and larger than anyone arguing in it'},
@@ -4388,7 +4433,7 @@ const COURT_SCENES=[
   {pos:[.7,1.4,-1.6],mode:'static',focal:50,shake:.26,lookAt:[2.1,1.55,-3.0],focus:2.0,dof:1.0},
   {pos:[2.3,1.7,-3.2],mode:'static',focal:75,shake:.2,lookAt:[4.3,1.82,-4.5],focus:2.3,dof:1.3},
   {pos:[.5,1.5,-1.9],mode:'follow',focal:40,shake:.34,target:'Padma',focus:2.3,dof:.8},
-  {pos:[-.7,1.25,-2.6],mode:'static',focal:105,shake:.16,lookAt:[-2.4,1.08,-1.6],focus:2.0,dof:1.6},
+  {pos:[-.7,1.25,-3.1],mode:'static',focal:105,shake:.16,lookAt:[-2.4,1.08,-2.08],focus:2.0,dof:1.6},
   {pos:[.3,1.2,-1.9],mode:'static',focal:50,shake:.22,lookAt:[-2.1,1.2,-2.9],focus:2.5,dof:1.1}],
  shots:[
   {name:'She stands',cam:0,t0:0,t1:3.2,intent:'Her file trembles. Her voice does not'},
