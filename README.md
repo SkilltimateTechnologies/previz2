@@ -15,8 +15,8 @@ Six stages, each editable before it feeds the next.
 | 2 · Screenplay | The Writer | Master-scene format; headings define the sets |
 | 3 · World | The Production Designer | Evidence-led bible — every choice traced to a line in the text |
 | 4 · Locations | The Location Scout | Unique places, with recce photographs attached |
-| 5 · Blocking | The Designer & AD | Sets built from the references. Actors on marks, no cameras yet |
-| 6 · Coverage | The Director & DP | Shots described — size, height, side, lens, intent |
+| 5 · Scenes | The Designer & AD | Every scene: set, marks, and what physically happens |
+| 6 · Shots | The Director & DP | Every shot: its action, its framing, and why it exists |
 | 7 · Stage | — | Framing solved, scenes loaded, yours to change |
 
 Each stage reads **its own scene's text**, not a truncated copy of the whole script,
@@ -36,6 +36,13 @@ real place are evidence — geometry, openings, materials, light are taken from 
 palette, clutter and mood only, explicitly not geometry. A generated image made from your
 own bible contains no information the bible did not already have, and generated interiors
 are rarely Euclidean; treating the two the same is how a set ends up confidently wrong.
+
+Every shot carries two lines that do different jobs. **Action** is what physically
+happens inside the shot — the line a storyboard artist draws from. **Intent** is why the
+shot exists dramatically. The scene's beats must be covered across its shots, in order.
+
+The Shots screen is editable: size, lens, height, move and duration write straight back,
+and changing the framing re-solves that camera and reloads the scene. Exports to JSON.
 
 **Framing is computed, not generated.** The DP prompt is forbidden from returning
 coordinates. It says *MCU, low, her left, 50mm*; `solveFraming` turns that into metres.
