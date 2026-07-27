@@ -653,12 +653,35 @@ function calibrateSit(c){
   B.lLo.quaternion.copy(restLo);
   c.kneeSign=(p.z<q.z)?1:-1;
   c.root.updateMatrixWorld(true);
+
+  /* how tall is this rig, and what is one unit of hip translation worth in metres?
+     Mixamo rigs are often authored in centimetres with the scale baked in, so a
+     hard-coded drop is a fraction of the intended distance. Measure it. */
+  if(B.hips){
+    const hipWorldY=()=>{
+      c.root.updateMatrixWorld(true);
+      return new V3().setFromMatrixPosition(B.hips.matrixWorld).y;
+    };
+    const y0=hipWorldY();
+    c.hipsStandH=y0-c.root.position.y;
+    const rest=B.hips.position.y;
+    B.hips.position.y=rest-1;
+    const y1=hipWorldY();
+    B.hips.position.y=rest;
+    c.hipsUnit=Math.abs(y0-y1);
+    if(!(c.hipsUnit>1e-6))c.hipsUnit=1;
+    c.root.updateMatrixWorld(true);
+  }
 }
-const SIT={thigh:1.46,shin:1.40,drop:.50};
+const SIT={thigh:1.46,shin:1.40,seat:.45};
 function applySit(c){
   const B=c.bones;if(!B)return;
   const hs=c.hipSign||1,ks=c.kneeSign||-1;
-  if(B.hips&&B.hipsRestY!=null)B.hips.position.y=B.hipsRestY-SIT.drop;
+  if(B.hips&&B.hipsRestY!=null){
+    const seat=(c.seatH!=null?c.seatH:SIT.seat)*(c.root.scale.y||1);
+    const dropM=Math.max(0,(c.hipsStandH||.95)-seat);
+    B.hips.position.y=B.hipsRestY-dropM/(c.hipsUnit||1);
+  }
   if(B.lUp)B.lUp.rotation.x=hs*SIT.thigh;
   if(B.rUp)B.rUp.rotation.x=hs*SIT.thigh;
   if(B.lLo)B.lLo.rotation.x=ks*SIT.shin;
@@ -2313,6 +2336,12 @@ function renderProps(){
       };
     });
     propBody.appendChild(ps);
+    if(c.pose==='sit'){
+      propBody.appendChild(slider('Seat height',.15,1.0,.01,
+        c.seatH!=null?c.seatH:SIT.seat,v=>v.toFixed(2)+' m',
+        v=>{c.seatH=v;state.thumbsDirty=true;}));
+      propBody.appendChild(h('<div class="sub" style="margin-top:0">Where the pelvis sits above the floor. A court bench is about 0.45, a low step 0.25.</div>'));
+    }
     const cast=h('<div class="seg"><button data-c="lead">Lead</button><button data-c="crowd">Crowd</button></div>');
     propBody.appendChild(cast);
     cast.querySelectorAll('[data-c]').forEach(b=>{
@@ -3236,7 +3265,7 @@ function snapshot(){
       mv:o.mover?{pts:o.mover.points.map(q=>[q.x,q.z]),sp:o.mover.speed,
         or:o.mover.orient,ar:o.mover.arc,by:o.mover.baseY}:null})),
     chars:chars.map(c=>({p:[c.root.position.x,c.root.position.z],r:c.root.rotation.y,s:c.root.scale.x,
-      g:c.gait,sp:c.speed,cr:!!c.crowd,lk:!!c.locked,ci:c.colorIdx,po:c.pose||null,py:c.root.position.y,
+      g:c.gait,sp:c.speed,cr:!!c.crowd,lk:!!c.locked,ci:c.colorIdx,po:c.pose||null,py:c.root.position.y,sh:c.seatH,
       pts:c.points.map(p=>[p.x,p.z])})),
     lights:lights.map(l=>({p:[l.group.position.x,l.group.position.y,l.group.position.z],
       q:[l.group.quaternion.x,l.group.quaternion.y,l.group.quaternion.z,l.group.quaternion.w],
@@ -3279,7 +3308,7 @@ function restoreSnap(json){
   });
   chars.forEach((c,i)=>{const a=d.chars[i];
     c.root.position.set(a.p[0],a.py||0,a.p[1]);c.root.rotation.y=a.r;c.root.scale.setScalar(a.s);
-    c.pose=a.po||null; if(c.pose!=='sit')releaseSit(c);
+    c.pose=a.po||null; c.seatH=a.sh; if(c.pose!=='sit')releaseSit(c);
     c.gait=a.g;c.speed=a.sp;c.crowd=a.cr;c.locked=!!a.lk;c.colorIdx=a.ci;
     c.points=a.pts.map(p=>new V3(p[0],0,p[1]));rebuildPath(c);});
   recolorCast();
@@ -4232,14 +4261,15 @@ const COURT_LIGHTS=[
 
 const GALLERY=[[-3.3,2.7],[-2.4,2.7],[2.6,2.7],[-1.6,3.9],[1.9,3.9],[3.0,3.9],[-2.9,5.1],[.6,5.1]]
   .map((p,i)=>({name:'Public '+(i+1),pos:[p[0],p[1]],rotY:3.1416,gait:'still',speed:0,
-    path:[],crowd:true,pose:'sit'}));
+    path:[],crowd:true,pose:'sit',seatH:.47}));
 const CAST_COURT=[
-  {name:'Judge Murthy',pos:[0,-5.15],y:.6,rotY:0,gait:'still',speed:0,path:[],colorIdx:4,pose:'sit'},
+  {name:'Judge Murthy',pos:[0,-5.15],y:.6,rotY:0,gait:'still',speed:0,path:[],colorIdx:4,
+   pose:'sit',seatH:.48},
   {name:'Bhaskara Rao',pos:[-2.7,-.55],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:1},
   {name:'Padma',pos:[2.7,-.55],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:0},
   {name:'The expert',pos:[3.5,-4.25],rotY:0,gait:'still',speed:0,path:[],colorIdx:5},
-  {name:'Girish',pos:[-1.5,2.7],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:3,pose:'sit'},
-  {name:'Chandu',pos:[1.2,2.7],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:2,pose:'sit'},
+  {name:'Girish',pos:[-1.5,2.7],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:3,pose:'sit',seatH:.47},
+  {name:'Chandu',pos:[1.2,2.7],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:2,pose:'sit',seatH:.47},
   {name:'Court officer',pos:[-2.2,-3.75],rotY:3.1416,gait:'still',speed:0,path:[],crowd:true}
 ].concat(GALLERY);
 
@@ -4412,7 +4442,7 @@ function serializeScene(){
         orient:o.mover.orient,arc:o.mover.arc,baseY:o.mover.baseY}:undefined})),
     chars:chars.map(c=>({name:c.name,pos:[c.root.position.x,c.root.position.z],
       rotY:c.root.rotation.y,scale:c.root.scale.x,gait:c.gait,speed:c.speed,crowd:!!c.crowd,
-      locked:!!c.locked,colorIdx:c.colorIdx,pose:c.pose||null,y:c.root.position.y,
+      locked:!!c.locked,colorIdx:c.colorIdx,pose:c.pose||null,y:c.root.position.y,seatH:c.seatH,
       path:c.points.map(p=>[p.x,p.z]),
       meta:(c.meta||[]).map(m=>({gait:m.gait,action:m.action}))})),
     lights:lights.map(l=>({kind:l.kind,
@@ -4459,6 +4489,7 @@ function loadScene(i,keep){
     if(cd.rotY!=null)c.root.rotation.y=cd.rotY;
     if(cd.scale)c.root.scale.setScalar(cd.scale);
     if(cd.locked)c.locked=true;
+    if(cd.seatH!=null)c.seatH=cd.seatH;
     if(cd.colorIdx!=null)c.colorIdx=cd.colorIdx;
     c.gait=cd.gait||'walk';
     c.speed=cd.speed!=null?cd.speed:SPEEDS[c.gait]||0;
