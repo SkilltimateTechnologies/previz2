@@ -966,8 +966,12 @@ function liveCamIndex(){
   return (state.shot!=null&&shots[state.shot])?shots[state.shot].cam:-1;
 }
 function camVisible(i){
-  // the rig appears while you are working with cameras, and gets out of the way otherwise
-  if(sel&&sel.t==='cam')return true;
+  // exactly one camera is ever drawn: the one you selected, or the one filming
+  if(sel&&sel.t==='cam')return cams[i]===sel.c;
+  if(sel&&sel.t==='shot'){
+    const sh=curShots()[sel.i];
+    if(sh)return i===sh.cam;
+  }
   const live=liveCamIndex();
   return live<0?true:i===live;
 }
