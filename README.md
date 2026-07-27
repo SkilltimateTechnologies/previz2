@@ -14,9 +14,16 @@ Six stages, each editable before it feeds the next.
 | 1 · Story | — | Prose in |
 | 2 · Screenplay | The Writer | Master-scene format; headings define the sets |
 | 3 · World | The Production Designer | Evidence-led bible — every choice traced to a line in the text |
-| 4 · Blocking | The Designer & AD | Sets built, actors on marks. No cameras yet |
-| 5 · Coverage | The Director & DP | Shots described — size, height, side, lens, intent |
-| 6 · Stage | — | Framing solved, scenes loaded, yours to change |
+| 4 · Locations | The Location Scout | Unique places, with recce photographs attached |
+| 5 · Blocking | The Designer & AD | Sets built from the references. Actors on marks, no cameras yet |
+| 6 · Coverage | The Director & DP | Shots described — size, height, side, lens, intent |
+| 7 · Stage | — | Framing solved, scenes loaded, yours to change |
+
+**Locations are parsed from the scene headings**, so a place the film returns to is one
+set built once rather than a fresh guess each time. Drop photographs of the real place
+on a location and they are sent to the designer as vision input — a set built from a
+written description is plausible, a set built from photographs is accurate. The scout
+can also read the photographs and write the note for you.
 
 **Framing is computed, not generated.** The DP prompt is forbidden from returning
 coordinates. It says *MCU, low, her left, 50mm*; `solveFraming` turns that into metres.
