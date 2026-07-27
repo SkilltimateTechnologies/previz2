@@ -633,40 +633,52 @@ function bindBones(c){
   c.bones=B;
   return B;
 }
-/* rigs disagree about which way a joint bends — measure rather than guess */
+/* Which way a joint bends differs between rigs, and measuring joints one at a time
+   is too indirect — it can pick a hip that swings correctly and a knee that does not.
+   Instead try every combination, build the finished pose, and score the result:
+   the knee must end up in front of the hip, and the foot below the knee, not out in
+   front of it. Eight evaluations at load, and it cannot be argued with. */
+function calibrateLeg(c,up,lo,foot){
+  if(!up||!lo||!foot)return {h:1,k:-1};
+  const restUp=up.quaternion.clone(),restLo=lo.quaternion.clone();
+  const inv=c.root.quaternion.clone().invert();
+  const loc=o=>new V3().setFromMatrixPosition(o.matrixWorld)
+    .sub(c.root.position).applyQuaternion(inv);
+  let best=null;
+  [1,-1].forEach(h=>{
+    [1,-1].forEach(k=>{
+      up.rotation.x=h*SIT.thigh;
+      lo.rotation.x=k*SIT.shin;
+      c.root.updateMatrixWorld(true);
+      const hip=loc(up),knee=loc(lo),ft=loc(foot);
+      const kneeAhead=knee.z-hip.z;          // thigh forward, not backward
+      const footBelow=knee.y-ft.y;           // shin hanging down
+      const footStray=Math.abs(ft.z-knee.z); // shin near vertical, not stuck out
+      const score=kneeAhead*2.2+footBelow*2.2-footStray*1.4;
+      if(!best||score>best.score)best={h:h,k:k,score:score};
+    });
+  });
+  up.quaternion.copy(restUp);
+  lo.quaternion.copy(restLo);
+  c.root.updateMatrixWorld(true);
+  return best;
+}
 function calibrateSit(c){
   const B=c.bones;
-  if(!B||!B.lUp||!B.lLo||!B.lFoot){c.hipSign=1;c.kneeSign=-1;return;}
-  const restUp=B.lUp.quaternion.clone(),restLo=B.lLo.quaternion.clone();
-  const inv=c.root.quaternion.clone().invert();
-  const localFoot=()=>{
-    c.root.updateMatrixWorld(true);
-    return new V3().setFromMatrixPosition(B.lFoot.matrixWorld)
-      .sub(c.root.position).applyQuaternion(inv);
-  };
-  B.lUp.rotation.x=.6; const a=localFoot();
-  B.lUp.rotation.x=-.6; const b=localFoot();
-  B.lUp.quaternion.copy(restUp);
-  c.hipSign=(a.z>b.z)?1:-1;
-  B.lLo.rotation.x=.6; const p=localFoot();
-  B.lLo.rotation.x=-.6; const q=localFoot();
-  B.lLo.quaternion.copy(restLo);
-  c.kneeSign=(p.z<q.z)?1:-1;
-  c.root.updateMatrixWorld(true);
-
-  /* how tall is this rig, and what is one unit of hip translation worth in metres?
-     Mixamo rigs are often authored in centimetres with the scale baked in, so a
-     hard-coded drop is a fraction of the intended distance. Measure it. */
+  if(!B||!B.lUp||!B.lLo){c.legL={h:1,k:-1};c.legR={h:1,k:-1};return;}
+  const restHipY=B.hips?B.hips.position.y:null;
+  c.legL=calibrateLeg(c,B.lUp,B.lLo,B.lFoot||B.lLo);
+  c.legR=calibrateLeg(c,B.rUp,B.rLo,B.rFoot||B.rLo);
+  if(B.hips&&restHipY!=null)B.hips.position.y=restHipY;
+  /* one unit of hip translation, in metres — the rig may be authored in centimetres */
   if(B.hips){
-    const hipWorldY=()=>{
-      c.root.updateMatrixWorld(true);
-      return new V3().setFromMatrixPosition(B.hips.matrixWorld).y;
-    };
-    const y0=hipWorldY();
+    const hipY=()=>{c.root.updateMatrixWorld(true);
+      return new V3().setFromMatrixPosition(B.hips.matrixWorld).y;};
+    const y0=hipY();
     c.hipsStandH=y0-c.root.position.y;
     const rest=B.hips.position.y;
     B.hips.position.y=rest-1;
-    const y1=hipWorldY();
+    const y1=hipY();
     B.hips.position.y=rest;
     c.hipsUnit=Math.abs(y0-y1);
     if(!(c.hipsUnit>1e-6))c.hipsUnit=1;
@@ -680,11 +692,11 @@ const _sitV=new V3();
    immune to whatever scale the rig was authored in. */
 function applySit(c){
   const B=c.bones;if(!B)return;
-  const hs=c.hipSign||1,ks=c.kneeSign||-1;
-  if(B.lUp)B.lUp.rotation.x=hs*SIT.thigh;
-  if(B.rUp)B.rUp.rotation.x=hs*SIT.thigh;
-  if(B.lLo)B.lLo.rotation.x=ks*SIT.shin;
-  if(B.rLo)B.rLo.rotation.x=ks*SIT.shin;
+  const L=c.legL||{h:1,k:-1},Rg=c.legR||{h:1,k:-1};
+  if(B.lUp)B.lUp.rotation.x=L.h*SIT.thigh;
+  if(B.lLo)B.lLo.rotation.x=L.k*SIT.shin;
+  if(B.rUp)B.rUp.rotation.x=Rg.h*SIT.thigh;
+  if(B.rLo)B.rLo.rotation.x=Rg.k*SIT.shin;
   if(!B.hips||B.hipsRestY==null)return;
   const seat=(c.seatH!=null?c.seatH:SIT.seat)*(c.root.scale.y||1);
   if(c._sitOff==null)c._sitOff=0;
