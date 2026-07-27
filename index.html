@@ -615,6 +615,59 @@ function recolorCast(){
   renderList();
 }
 const NOMINAL={walk:1.4,run:2.9};
+/* ---- sitting is a pose, not a clip: drive the bones directly ---- */
+function bindBones(c){
+  const B={};
+  c.root.traverse(o=>{
+    if(!o.isBone)return;
+    const n=o.name.toLowerCase();
+    if(/hips$/.test(n))B.hips=o;
+    else if(/leftupleg$/.test(n))B.lUp=o;
+    else if(/rightupleg$/.test(n))B.rUp=o;
+    else if(/leftleg$/.test(n))B.lLo=o;
+    else if(/rightleg$/.test(n))B.rLo=o;
+    else if(/leftfoot$/.test(n))B.lFoot=o;
+    else if(/rightfoot$/.test(n))B.rFoot=o;
+  });
+  if(B.hips)B.hipsRestY=B.hips.position.y;
+  c.bones=B;
+  return B;
+}
+/* rigs disagree about which way a joint bends — measure rather than guess */
+function calibrateSit(c){
+  const B=c.bones;
+  if(!B||!B.lUp||!B.lLo||!B.lFoot){c.hipSign=1;c.kneeSign=-1;return;}
+  const restUp=B.lUp.quaternion.clone(),restLo=B.lLo.quaternion.clone();
+  const inv=c.root.quaternion.clone().invert();
+  const localFoot=()=>{
+    c.root.updateMatrixWorld(true);
+    return new V3().setFromMatrixPosition(B.lFoot.matrixWorld)
+      .sub(c.root.position).applyQuaternion(inv);
+  };
+  B.lUp.rotation.x=.6; const a=localFoot();
+  B.lUp.rotation.x=-.6; const b=localFoot();
+  B.lUp.quaternion.copy(restUp);
+  c.hipSign=(a.z>b.z)?1:-1;
+  B.lLo.rotation.x=.6; const p=localFoot();
+  B.lLo.rotation.x=-.6; const q=localFoot();
+  B.lLo.quaternion.copy(restLo);
+  c.kneeSign=(p.z<q.z)?1:-1;
+  c.root.updateMatrixWorld(true);
+}
+const SIT={thigh:1.46,shin:1.40,drop:.50};
+function applySit(c){
+  const B=c.bones;if(!B)return;
+  const hs=c.hipSign||1,ks=c.kneeSign||-1;
+  if(B.hips&&B.hipsRestY!=null)B.hips.position.y=B.hipsRestY-SIT.drop;
+  if(B.lUp)B.lUp.rotation.x=hs*SIT.thigh;
+  if(B.rUp)B.rUp.rotation.x=hs*SIT.thigh;
+  if(B.lLo)B.lLo.rotation.x=ks*SIT.shin;
+  if(B.rLo)B.rLo.rotation.x=ks*SIT.shin;
+}
+function releaseSit(c){
+  const B=c.bones;if(!B)return;
+  if(B.hips&&B.hipsRestY!=null)B.hips.position.y=B.hipsRestY;
+}
 function classify(n){n=n.toLowerCase();
   if(n.includes('idle'))return'idle'; if(n.includes('walk'))return'walk';
   if(n.includes('run'))return'run'; return null;}
@@ -658,6 +711,9 @@ function makeCharacter(base,label,opts={}){
   scene.add(c.root,c.line,c.nodes);
   setLoco(c,'idle',0);
   if(c.mixer)c.mixer.update(0.0001);   // out of the bind pose the instant it exists
+  bindBones(c);
+  calibrateSit(c);
+  c.pose=opts.pose||null;
   chars.push(c);
   recolorCast();
   select({t:'char',c}); computeDur(); renderList();
@@ -800,6 +856,7 @@ function driveCharacter(c,t,dt){
         else{setLoco(c,'run');if(c.actions.run)c.actions.run.timeScale=clamp(spEff/NOMINAL.run,.6,1.7);}
       }
       if(dt>0)c.mixer.update(dt); else poseFromTime(c,t);
+      if(c.pose==='sit')applySit(c);
     }
     c._entry=ei;
     return;
@@ -807,9 +864,13 @@ function driveCharacter(c,t,dt){
   if(c.mixer){
     if(!c.gesture)setLoco(c,'idle');
     if(dt>0)c.mixer.update(dt); else poseFromTime(c,t);
+    if(c.pose==='sit')applySit(c);
   }
 }
-function chest(c){return c.root.position.clone().add(new V3(0,1.35*c.root.scale.y,0));}
+function chest(c){
+  const hh=(c.pose==='sit')?0.98:1.35;
+  return c.root.position.clone().add(new V3(0,hh*(c.root.scale.y||1),0));
+}
 
 /* ------- cameras ------- */
 const cams=[]; let camCount=0, monitorCam=null;
@@ -2241,6 +2302,17 @@ function renderProps(){
       });
       propBody.appendChild(sw);
     }
+    const ps=h('<div class="seg"><button data-p="stand">Stand</button><button data-p="sit">Sit</button></div>');
+    ps.querySelectorAll('[data-p]').forEach(b=>{
+      b.classList.toggle('on',(b.dataset.p==='sit')===(c.pose==='sit'));
+      b.onclick=()=>{
+        pushUndo();
+        c.pose=(b.dataset.p==='sit')?'sit':null;
+        if(c.pose!=='sit')releaseSit(c);
+        state.thumbsDirty=true;renderProps();
+      };
+    });
+    propBody.appendChild(ps);
     const cast=h('<div class="seg"><button data-c="lead">Lead</button><button data-c="crowd">Crowd</button></div>');
     propBody.appendChild(cast);
     cast.querySelectorAll('[data-c]').forEach(b=>{
@@ -3164,7 +3236,7 @@ function snapshot(){
       mv:o.mover?{pts:o.mover.points.map(q=>[q.x,q.z]),sp:o.mover.speed,
         or:o.mover.orient,ar:o.mover.arc,by:o.mover.baseY}:null})),
     chars:chars.map(c=>({p:[c.root.position.x,c.root.position.z],r:c.root.rotation.y,s:c.root.scale.x,
-      g:c.gait,sp:c.speed,cr:!!c.crowd,lk:!!c.locked,ci:c.colorIdx,
+      g:c.gait,sp:c.speed,cr:!!c.crowd,lk:!!c.locked,ci:c.colorIdx,po:c.pose||null,py:c.root.position.y,
       pts:c.points.map(p=>[p.x,p.z])})),
     lights:lights.map(l=>({p:[l.group.position.x,l.group.position.y,l.group.position.z],
       q:[l.group.quaternion.x,l.group.quaternion.y,l.group.quaternion.z,l.group.quaternion.w],
@@ -3206,7 +3278,8 @@ function restoreSnap(json){
     } else if(o.mover) dropMover(o);
   });
   chars.forEach((c,i)=>{const a=d.chars[i];
-    c.root.position.set(a.p[0],0,a.p[1]);c.root.rotation.y=a.r;c.root.scale.setScalar(a.s);
+    c.root.position.set(a.p[0],a.py||0,a.p[1]);c.root.rotation.y=a.r;c.root.scale.setScalar(a.s);
+    c.pose=a.po||null; if(c.pose!=='sit')releaseSit(c);
     c.gait=a.g;c.speed=a.sp;c.crowd=a.cr;c.locked=!!a.lk;c.colorIdx=a.ci;
     c.points=a.pts.map(p=>new V3(p[0],0,p[1]));rebuildPath(c);});
   recolorCast();
@@ -4124,14 +4197,7 @@ const COURT=[
   BLK(-3.4,3.92,-1.5,.14,.1,3.2), BLK(3.4,3.92,-1.5,.14,.1,3.2),     // tube lights
   BLK(-3.4,3.92,3.0,.14,.1,3.2),  BLK(3.4,3.92,3.0,.14,.1,3.2),
 
-  {kind:'seated',pos:[-3.3,0,2.7],rotY:3.1416,scale:[1,1,1]},
-  {kind:'seated',pos:[-2.4,0,2.7],rotY:3.1416,scale:[1,1,1]},
-  {kind:'seated',pos:[2.6,0,2.7],rotY:3.1416,scale:[1,1,1]},
-  {kind:'seated',pos:[-1.6,0,3.9],rotY:3.1416,scale:[1,1,1]},
-  {kind:'seated',pos:[1.9,0,3.9],rotY:3.1416,scale:[1,1,1]},
-  {kind:'seated',pos:[3.0,0,3.9],rotY:3.1416,scale:[1,1,1]},
-  {kind:'seated',pos:[-2.9,0,5.1],rotY:3.1416,scale:[1,1,1]},
-  {kind:'seated',pos:[.6,0,5.1],rotY:3.1416,scale:[1,1,1]}
+  BLK(-3.5,.55,-5.62,.34,.12,.26)                                    // her glasses, folded
 ];
 
 /* --- the verdict corridor --- */
@@ -4164,19 +4230,22 @@ const COURT_LIGHTS=[
   {kind:'spot',name:'Window shaft',pos:[5.4,3.4,-3.0],color:0xFFF0D2,intensity:95,dist:16,
    angle:.72,penumbra:.55,lookAt:[0,.9,-2.2]}];
 
+const GALLERY=[[-3.3,2.7],[-2.4,2.7],[2.6,2.7],[-1.6,3.9],[1.9,3.9],[3.0,3.9],[-2.9,5.1],[.6,5.1]]
+  .map((p,i)=>({name:'Public '+(i+1),pos:[p[0],p[1]],rotY:3.1416,gait:'still',speed:0,
+    path:[],crowd:true,pose:'sit'}));
 const CAST_COURT=[
-  {name:'Judge Murthy',pos:[0,-5.15],rotY:0,gait:'still',speed:0,path:[],colorIdx:4},
+  {name:'Judge Murthy',pos:[0,-5.15],y:.6,rotY:0,gait:'still',speed:0,path:[],colorIdx:4,pose:'sit'},
   {name:'Bhaskara Rao',pos:[-2.7,-.55],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:1},
   {name:'Padma',pos:[2.7,-.55],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:0},
   {name:'The expert',pos:[3.5,-4.25],rotY:0,gait:'still',speed:0,path:[],colorIdx:5},
-  {name:'Girish',pos:[-1.5,2.65],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:3},
-  {name:'Chandu',pos:[1.2,2.65],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:2},
-  {name:'Court officer',pos:[-2.2,-3.75],rotY:3.1416,gait:'still',speed:0,path:[],crowd:true},
-  {name:'Clerk',pos:[-3.4,-4.5],rotY:1.2,gait:'still',speed:0,path:[],crowd:true}];
+  {name:'Girish',pos:[-1.5,2.7],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:3,pose:'sit'},
+  {name:'Chandu',pos:[1.2,2.7],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:2,pose:'sit'},
+  {name:'Court officer',pos:[-2.2,-3.75],rotY:3.1416,gait:'still',speed:0,path:[],crowd:true}
+].concat(GALLERY);
 
 const COURT_SCENES=[
 {name:"Courtroom 3",time:"11:05 AM",
- notes:"Coverage: master-and-singles. The reluctant fan, the file, and two brothers who will not look at each other. Everyone is on standing marks — there is no seated clip in this rig, so the gallery is dressed with simplified figures and counsel stand as they would when the bench is reading.",
+ notes:"Coverage: master-and-singles. The reluctant fan, the file, and two brothers who will not look at each other. The bench, the litigants and the public are seated on the rig itself; counsel stand, as they would while the bench is reading.",
  beats:["The fan turns at its one speed","Judge Murthy reads the file over her glasses",
         "Girish and Chandu sit apart and do not look at each other","The will waits in its plastic sleeve"],
  env:{type:null}, light:DAY_COURT,
@@ -4184,8 +4253,8 @@ const COURT_SCENES=[
  props:COURT, lights:COURT_LIGHTS, chars:CAST_COURT,
  cams:[
   {pos:[0,1.75,5.6],mode:'static',focal:24,shake:.24,lookAt:[0,1.5,-5.6],focus:9,dof:.3},
-  {pos:[.4,1.5,-2.6],mode:'static',focal:50,shake:.22,lookAt:[0,1.62,-5.5],focus:3.1,dof:.9},
-  {pos:[-.1,1.55,-.2],mode:'static',focal:65,shake:.2,lookAt:[-.2,1.35,2.7],focus:3.0,dof:1.1},
+  {pos:[.4,1.5,-2.6],mode:'static',focal:50,shake:.22,lookAt:[0,1.6,-5.4],focus:3.0,dof:.9},
+  {pos:[-.1,1.5,-.3],mode:'static',focal:65,shake:.2,lookAt:[-.2,1.05,2.7],focus:3.1,dof:1.1},
   {pos:[-.9,1.25,-2.0],mode:'static',focal:85,shake:.18,lookAt:[0,.82,-2.9],focus:1.3,dof:1.5}],
  shots:[
   {name:'Courtroom master',cam:0,t0:0,t1:4.0,intent:'The room is older and larger than anyone arguing in it'},
@@ -4229,7 +4298,7 @@ const COURT_SCENES=[
   {pos:[1.1,1.35,.7],mode:'static',focal:50,shake:.26,lookAt:[2.7,1.5,-.6],focus:2.1,dof:1.0},
   {pos:[2.0,1.5,-2.4],mode:'static',focal:75,shake:.2,lookAt:[3.5,1.42,-4.2],focus:2.4,dof:1.3},
   {pos:[1.0,1.45,-1.0],mode:'follow',focal:40,shake:.34,target:'Padma',focus:2.4,dof:.8},
-  {pos:[-1.3,1.5,.6],mode:'static',focal:105,shake:.16,lookAt:[-1.5,1.5,2.65],focus:2.1,dof:1.6},
+  {pos:[-1.3,1.35,.7],mode:'static',focal:105,shake:.16,lookAt:[-1.5,1.05,2.7],focus:2.1,dof:1.6},
   {pos:[-.6,1.2,.2],mode:'static',focal:50,shake:.22,lookAt:[-2.7,1.2,-.9],focus:2.4,dof:1.1}],
  shots:[
   {name:'She stands',cam:0,t0:0,t1:3.2,intent:'Her file trembles. Her voice does not'},
@@ -4343,7 +4412,7 @@ function serializeScene(){
         orient:o.mover.orient,arc:o.mover.arc,baseY:o.mover.baseY}:undefined})),
     chars:chars.map(c=>({name:c.name,pos:[c.root.position.x,c.root.position.z],
       rotY:c.root.rotation.y,scale:c.root.scale.x,gait:c.gait,speed:c.speed,crowd:!!c.crowd,
-      locked:!!c.locked,colorIdx:c.colorIdx,
+      locked:!!c.locked,colorIdx:c.colorIdx,pose:c.pose||null,y:c.root.position.y,
       path:c.points.map(p=>[p.x,p.z]),
       meta:(c.meta||[]).map(m=>({gait:m.gait,action:m.action}))})),
     lights:lights.map(l=>({kind:l.kind,
@@ -4385,8 +4454,8 @@ function loadScene(i,keep){
     }
   });
   (sp.chars||[]).forEach(cd=>{
-    const c=makeCharacter(charBase,'Xbot',{name:cd.name,crowd:!!cd.crowd});
-    c.root.position.set(cd.pos[0],0,cd.pos[1]);
+    const c=makeCharacter(charBase,'Xbot',{name:cd.name,crowd:!!cd.crowd,pose:cd.pose||null});
+    c.root.position.set(cd.pos[0],cd.y||0,cd.pos[1]);
     if(cd.rotY!=null)c.root.rotation.y=cd.rotY;
     if(cd.scale)c.root.scale.setScalar(cd.scale);
     if(cd.locked)c.locked=true;

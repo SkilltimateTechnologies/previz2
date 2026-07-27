@@ -78,8 +78,9 @@ Undo covers every edit (`Ctrl+Z` / `Ctrl+Shift+Z`).
 
 - Characters are mannequins. Final imagery is expected to come from a generative pass
   downstream, guided by this blocking
-- No seated or lying clips in the bundled rig — background figures who sit are
-  simplified box mannequins by design. Import Mixamo GLBs to remove this
+- Sitting is a **pose**, not a clip: the rig's hip and knee bones are driven directly,
+  with the bend direction measured at load rather than assumed, so it works on an
+  imported rig too. Lying down still needs an imported clip
 - Built for shorts. Feature length needs a locations/cast registry, per-scene screenplay
   parsing, and persistence — see the notes in the repo issues
 
