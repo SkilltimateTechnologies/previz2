@@ -657,6 +657,7 @@ function makeCharacter(base,label,opts={}){
     new THREE.LineBasicMaterial({color:c.color}));
   scene.add(c.root,c.line,c.nodes);
   setLoco(c,'idle',0);
+  if(c.mixer)c.mixer.update(0.0001);   // out of the bind pose the instant it exists
   chars.push(c);
   recolorCast();
   select({t:'char',c}); computeDur(); renderList();
@@ -756,6 +757,21 @@ function startActionClip(c,clip){
   if(c.loco&&c.actions[c.loco])c.actions[c.loco].crossFadeTo(c.gesture,.18,false);
   c.loco=null;
 }
+/* paused, scrubbing or thumbnailing: pose from timeline position so a skeleton is
+   never left in its bind pose, and the same moment always gives the same pose */
+function poseFromTime(c,t){
+  if(!c.mixer)return;
+  const act=c.loco&&c.actions[c.loco];
+  if(act&&act.getClip){
+    const clip=act.getClip();
+    const dur=(clip&&clip.duration)||1;
+    const ts=act.timeScale||1;
+    act.time=(((t*ts)%dur)+dur)%dur;
+    act.enabled=true;
+    act.setEffectiveWeight(1);
+  }
+  c.mixer.update(0);
+}
 function driveCharacter(c,t,dt){
   if(c.schedule){
     const es=c.schedule.entries,L=Math.max(c.len,1e-4);
@@ -783,14 +799,14 @@ function driveCharacter(c,t,dt){
         else if(spEff<2){setLoco(c,'walk');if(c.actions.walk)c.actions.walk.timeScale=clamp(spEff/NOMINAL.walk,.6,1.7);}
         else{setLoco(c,'run');if(c.actions.run)c.actions.run.timeScale=clamp(spEff/NOMINAL.run,.6,1.7);}
       }
-      if(dt>0)c.mixer.update(dt);
+      if(dt>0)c.mixer.update(dt); else poseFromTime(c,t);
     }
     c._entry=ei;
     return;
   }
   if(c.mixer){
     if(!c.gesture)setLoco(c,'idle');
-    if(dt>0)c.mixer.update(dt);
+    if(dt>0)c.mixer.update(dt); else poseFromTime(c,t);
   }
 }
 function chest(c){return c.root.position.clone().add(new V3(0,1.35*c.root.scale.y,0));}
