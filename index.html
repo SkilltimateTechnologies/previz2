@@ -4046,9 +4046,9 @@ const PLATFORM=[
   WL(9.5,4.4,9,0,{type:'door',cx:0,ow:.35,oh:2.4,sill:0},1.5),
   BLK(-3.4,2.85,3.9,3.6,1.25,.14),                               // departure board
   BLK(-3.4,1.9,3.95,.12,.9,.12),
-  {kind:'bench',pos:[-6.5,0,3.1],rotY:3.1416,scale:[.95,1,1]},
-  {kind:'bench',pos:[3.5,0,3.1],rotY:3.1416,scale:[.95,1,1]},
-  {kind:'bench',pos:[9,0,3.1],rotY:3.1416,scale:[.95,1,1]},
+  {kind:'bench',pos:[-6.5,0,3.1],rotY:0,scale:[.95,1,1]},
+  {kind:'bench',pos:[3.5,0,3.1],rotY:0,scale:[.95,1,1]},
+  {kind:'bench',pos:[9,0,3.1],rotY:0,scale:[.95,1,1]},
   // fixtures: the station does business
   {kind:'stall',pos:[-11.5,0,3.3],rotY:0,scale:[1,1,1]},          // book stall
   {kind:'stall',pos:[6.8,0,3.3],rotY:0,scale:[1,1,1]},            // snacks
@@ -4276,7 +4276,7 @@ const FILES=(x,y,z,n)=>{
    Fluorescent tubes overhead doing the work; the windows barely register. */
 const BOX=(x,z,r)=>({kind:'witnessbox',pos:[x,0,z],rotY:r||0,scale:[1,1,1]});
 const BAR=(z)=>({kind:'bardesk',pos:[0,0,z],rotY:0,scale:[3.67,1,1]});
-const GAL=(z)=>({kind:'bench',pos:[0,0,z],rotY:3.1416,scale:[5.8,1,1]});
+const GAL=(z)=>({kind:'bench',pos:[0,0,z],rotY:0,scale:[5.8,1,1]});
 const STACK=(x,y,z)=>({kind:'filestack',pos:[x,y,z],rotY:0,scale:[1,1,1]});
 
 const COURT=[
@@ -4338,10 +4338,10 @@ const COURT_LIGHTS=[
 const GALLERY=[[-4.4,3.16],[-3.3,3.16],[-1.9,3.16],[1.6,3.16],[3.1,3.16],[4.5,3.16],
                [-3.8,4.36],[-2.2,4.36],[.9,4.36],[2.8,4.36],[-2.6,5.56],[1.4,5.56]]
   .map((p,i)=>({name:'Public '+(i+1),pos:[p[0],p[1]],rotY:3.1416,gait:'still',speed:0,
-    path:[],crowd:true,pose:'sit',seatH:.47}));
+    path:[],crowd:true,pose:'sit',seatH:.50}));
 const BARSEATS=[[-4.6,-2.08],[-3.4,-2.08],[3.4,-2.08],[4.6,-2.08],[-4.0,-.58],[4.0,-.58],[-1.2,.92],[1.2,.92]]
   .map((p,i)=>({name:'Advocate '+(i+1),pos:[p[0],p[1]],rotY:3.1416,gait:'still',speed:0,
-    path:[],crowd:true,pose:'sit',seatH:.47}));
+    path:[],crowd:true,pose:'sit',seatH:.50}));
 
 const CAST_COURT=[
   {name:'Judge Murthy',pos:[0,-6.05],y:.7,rotY:0,gait:'still',speed:0,path:[],colorIdx:4,
@@ -4350,9 +4350,9 @@ const CAST_COURT=[
   {name:'Padma',pos:[2.1,-3.05],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:0},
   {name:'The expert',pos:[4.3,-4.5],y:.44,rotY:-.55,gait:'still',speed:0,path:[],colorIdx:5},
   {name:'Girish',pos:[-2.4,-2.08],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:3,
-   pose:'sit',seatH:.47},
+   pose:'sit',seatH:.50},
   {name:'Chandu',pos:[2.4,-2.08],rotY:3.1416,gait:'still',speed:0,path:[],colorIdx:2,
-   pose:'sit',seatH:.47},
+   pose:'sit',seatH:.50},
   {name:'Court officer',pos:[-1.0,-3.9],rotY:0,gait:'still',speed:0,path:[],crowd:true},
   {name:'Constable',pos:[-5.7,-4.4],rotY:.5,gait:'still',speed:0,path:[],crowd:true}
 ].concat(BARSEATS).concat(GALLERY);
@@ -4367,8 +4367,8 @@ const CORRIDOR=[
   BLK(0,3.9,-2,7.4,.25,26),
   COL(-3.0,-7.5),COL(-3.0,-2.5),COL(-3.0,2.5),
   COL(3.0,-7.5),COL(3.0,-2.5),COL(3.0,2.5),
-  {kind:'bench',pos:[-2.4,0,-4.2],rotY:1.5708,scale:[1.4,1,1]},
-  {kind:'bench',pos:[-2.4,0,1.4],rotY:1.5708,scale:[1.4,1,1]},
+  {kind:'bench',pos:[-2.4,0,-4.2],rotY:-1.5708,scale:[1.4,1,1]},
+  {kind:'bench',pos:[-2.4,0,1.4],rotY:-1.5708,scale:[1.4,1,1]},
   BLK(2.6,.9,-3.0,.1,1.8,1.2),
   ...FILES(2.3,.55,1.0,4),
   {kind:'scooter',pos:[1.4,0,3.2],rotY:1.9,scale:[1,1,1]},
