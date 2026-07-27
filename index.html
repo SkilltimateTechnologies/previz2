@@ -3330,8 +3330,10 @@ function tick(now){
   }else{
     hideHelpers(false);
     cullWalls(true);
+    renderer.toneMappingExposure=Math.max(1.0,LOOK.exposure||1);
     renderer.setViewport(0,0,vw,vh);
     renderer.render(scene,edCam);
+    renderer.toneMappingExposure=1.0;
     cullWalls(false);
     if(mon.w>40&&monitorCam){
       renderGraded(monitorCam,state.t,mon.x,mon.y,mon.w,mon.h,state.ar);
@@ -4336,12 +4338,12 @@ KEY PROPS — The drawer with the batteries and the pens. The stove. The curd bo
 
 /* ================= PIPELINE: story → screenplay → world → shots → 3D ================= */
 const LP={
- dawn:{sky:0x2b3138,fogC:0x2f363d,fogN:38,fogF:140,hemiSky:0xc8dae6,hemiGround:0x30322f,hemiI:1.3,keyC:0xffe9cf,keyI:1.7,keyPos:[14,6,-6],fillI:.5,skyTop:0x11203c,skyHor:0x3d4d68,sunI:.35,stars:.20},
- morning:{sky:0x2b3138,fogC:0x2f363d,fogN:38,fogF:140,hemiSky:0xc8dae6,hemiGround:0x30322f,hemiI:1.35,keyC:0xfff1dc,keyI:2.0,keyPos:[14,9,-6],fillI:.5,skyTop:0x35699f,skyHor:0xc6d9e6,sunI:.60},
- day:{sky:0x39414a,fogC:0x3d4650,fogN:45,fogF:170,hemiSky:0xd4e4ee,hemiGround:0x34372f,hemiI:1.5,keyC:0xffffff,keyI:2.2,keyPos:[8,14,-4],fillI:.55,skyTop:0x2d6fb8,skyHor:0xcfe2ef,sunI:.65},
- dusk:{sky:0x2a2438,fogC:0x2b2437,fogN:44,fogF:165,hemiSky:0x8a80b4,hemiGround:0x3a2a20,hemiI:.95,keyC:0xff9a4e,keyI:1.35,keyPos:[-14,3.5,-14],fillI:.34,fillC:0x6478b4,skyTop:0x2a2447,skyHor:0xd97a45,sunI:.90},
- night:{sky:0x14151b,fogC:0x14151c,fogN:28,fogF:100,hemiSky:0x414a68,hemiGround:0x17191c,hemiI:.62,keyC:0xffd9a0,keyI:1.25,keyPos:[2,6.5,-1],fillI:.26,fillC:0x4a5680,skyTop:0x090e1c,skyHor:0x1e2740,sunI:.06,stars:.55},
- lateNight:{sky:0x0e1015,fogC:0x0e1016,fogN:24,fogF:86,hemiSky:0x303a58,hemiGround:0x0d0f12,hemiI:.52,keyC:0x9fb4d8,keyI:.65,keyPos:[-14,7,4],fillI:.2,fillC:0x3a4568,skyTop:0x060a14,skyHor:0x141c33,sunI:.04,stars:.70}
+ dawn:{sky:0x2b3138,fogC:0x2f363d,fogN:38,fogF:140,hemiSky:0xc8dae6,hemiGround:0x30322f,hemiI:1.75,keyC:0xffe9cf,keyI:2.3,keyPos:[14,6,-6],fillI:.5,skyTop:0x11203c,skyHor:0x3d4d68,sunI:.35,stars:.20},
+ morning:{sky:0x2b3138,fogC:0x2f363d,fogN:38,fogF:140,hemiSky:0xc8dae6,hemiGround:0x30322f,hemiI:1.8,keyC:0xfff1dc,keyI:2.7,keyPos:[14,9,-6],fillI:.5,skyTop:0x35699f,skyHor:0xc6d9e6,sunI:.60},
+ day:{sky:0x39414a,fogC:0x3d4650,fogN:45,fogF:170,hemiSky:0xd4e4ee,hemiGround:0x34372f,hemiI:1.95,keyC:0xffffff,keyI:2.9,keyPos:[8,14,-4],fillI:.55,skyTop:0x2d6fb8,skyHor:0xcfe2ef,sunI:.65},
+ dusk:{sky:0x2a2438,fogC:0x2b2437,fogN:44,fogF:165,hemiSky:0x8a80b4,hemiGround:0x3a2a20,hemiI:1.35,keyC:0xff9a4e,keyI:1.85,keyPos:[-14,3.5,-14],fillI:.34,fillC:0x6478b4,skyTop:0x2a2447,skyHor:0xd97a45,sunI:.90},
+ night:{sky:0x14151b,fogC:0x14151c,fogN:28,fogF:100,hemiSky:0x414a68,hemiGround:0x17191c,hemiI:1.0,keyC:0xffd9a0,keyI:1.7,keyPos:[2,6.5,-1],fillI:.26,fillC:0x4a5680,skyTop:0x090e1c,skyHor:0x1e2740,sunI:.06,stars:.55},
+ lateNight:{sky:0x0e1015,fogC:0x0e1016,fogN:24,fogF:86,hemiSky:0x303a58,hemiGround:0x0d0f12,hemiI:.85,keyC:0x9fb4d8,keyI:1.0,keyPos:[-14,7,4],fillI:.2,fillC:0x3a4568,skyTop:0x060a14,skyHor:0x141c33,sunI:.04,stars:.70}
 };
 const PIPE={story:'',screenplay:'',world:'',shots:null,blocking:null,coverage:null,
   locations:[],locIndex:[],scenes:[],spec:null,step:0,busy:false,offline:false,synth:false};
@@ -4523,9 +4525,14 @@ Before you place anything, work out what physically happens in this scene and wh
 Place a prop for every object the action uses — if a character sets something down, pours something,
 opens something, that object and the surface it sits on must exist.
 Place people where the action requires, with clear space for a camera to see them.
+Light the set. An interior needs its own sources — strip lights, a window, a desk lamp.
+Give 1 to 4 lights: {kind,name,x,y,z,color,intensity,dist} with kind "point" for a bulb.
+y is height in metres; ceiling fittings sit near 2.3. intensity 25-90, dist 6-18.
+color as a hex number, e.g. 0xFFF2DC for a cool fitting, 0xFFD9A0 for a warm one.
 Return JSON only:
 {"beats":["short line per physical action, in order"],
- "set":{"walls":[],"props":[]},"chars":[],"light":"morning","env":{"type":"none"},
+ "set":{"walls":[],"props":[]},"chars":[],"lights":[],
+ "light":"morning","env":{"type":"none"},
  "notes":"one line of staging intent"}
 light dawn|morning|day|dusk|night|lateNight. env.type none or colony (an Indian apartment colony outside; add "elevation" for an upper floor).`;
 
@@ -4548,6 +4555,14 @@ Use a named coverage pattern and say which in the scene note: master-and-singles
 Return JSON only: {"pattern":"","shots":[]}`;
 
 /* ---- framing solved from intent, never guessed ---- */
+const LOOK_FOR={
+  dawn:{exposure:1.30,contrast:1.08,sat:.90,vig:.48,grain:.40,ca:.35},
+  morning:{exposure:1.12,contrast:1.06,sat:1.00,vig:.38,grain:.30,ca:.32},
+  day:{exposure:1.02,contrast:1.08,sat:1.00,vig:.34,grain:.26,ca:.28},
+  dusk:{exposure:1.18,contrast:1.06,sat:1.08,vig:.46,grain:.34,ca:.42},
+  night:{exposure:1.45,contrast:1.04,sat:.92,vig:.54,grain:.46,ca:.35},
+  lateNight:{exposure:1.65,contrast:1.02,sat:.84,vig:.60,grain:.52,ca:.30}
+};
 const PIPE_SIZE={ECU:1.30,CU:0.88,MCU:0.60,MED:0.40,MLS:0.25,WIDE:0.14};
 const PIPE_HEIGHT={low:0.95,eye:1.55,high:2.30};
 /* bounds from the actual wall runs, not an inflated guess */
@@ -4669,8 +4684,27 @@ function assembleScene(bl,cov,ar){
     env.elevation=bl.env.elevation!=null?bl.env.elevation:0;
     if(!env.elevation)delete env.slab;
   }
+  /* an interior with walls and no practicals has nothing lighting it —
+     drop in a soft ceiling fill so the set is at least visible */
+  const roomy=(st.walls||[]).length>=3;
+  let lights=(bl.lights||[]).filter(l=>l&&l.pos!==undefined||l&&l.x!==undefined).map(l=>({
+    kind:l.kind==='spot'?'spot':'point',
+    name:l.name||'Practical',
+    pos:l.pos||[l.x||0,l.y!=null?l.y:2.25,l.z||0],
+    color:l.color!=null?l.color:0xFFF2DC,
+    intensity:Math.max(8,Math.min(160,l.intensity||40)),
+    dist:Math.max(3,Math.min(30,l.dist||12))
+  }));
+  if(!lights.length&&roomy&&bounds){
+    const cx=(bounds.mnx+bounds.mxx)/2, cz=(bounds.mnz+bounds.mxz)/2;
+    const span=Math.max(bounds.mxx-bounds.mnx,bounds.mxz-bounds.mnz);
+    lights.push({kind:'point',name:'Room fill',pos:[cx,2.25,cz],
+      color:(bl.light==='night'||bl.light==='lateNight')?0xFFD9A0:0xFFF2DC,
+      intensity:Math.round(26+span*4.5),dist:Math.max(8,span*1.5)});
+  }
   return {name:bl.name||'Scene',time:bl.time||'',
-    beats:bl.beats||[],
+    beats:bl.beats||[],lights:lights,
+    look:Object.assign({},LOOK_FOR[bl.light]||LOOK_FOR.day),
     notes:((cov&&cov.pattern)?('Coverage: '+cov.pattern+'. '):'')+(bl.notes||''),
     env:env,light:LP[bl.light]||LP.day,props:props,chars:chars,
     cams:cams.length?cams:[{pos:[0,1.55,6],lookAt:[0,1.2,0],focal:35,mode:'static',shake:.26}],
