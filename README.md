@@ -30,6 +30,13 @@ on a location and they are sent to the designer as vision input — a set built 
 written description is plausible, a set built from photographs is accurate. The scout
 can also read the photographs and write the note for you.
 
+The Locations step asks for photographs but never requires them, and each location shows
+what its set will actually be built from: **Photographs** (measured off the real place),
+**Researched** (built to how this kind of place usually is), **Your note**, or **Nothing**.
+The button carries the same honesty — it reads "Block from your photographs" or "Block
+from the bible alone" depending on the weakest location, so nobody is surprised by an
+invented set.
+
 Locations hold two kinds of image and the prompt tells them apart. **Photographs** of the
 real place are evidence — geometry, openings, materials, light are taken from them.
 **Concept stills**, generated through a connected image service, are look development —
