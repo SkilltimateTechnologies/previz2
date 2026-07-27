@@ -674,21 +674,35 @@ function calibrateSit(c){
   }
 }
 const SIT={thigh:1.46,shin:1.40,seat:.45};
+const _sitV=new V3();
+/* Rather than compute the drop from assumed units, apply the pose, measure where the
+   pelvis actually landed, and correct. Linear, so it converges in one pass, and it is
+   immune to whatever scale the rig was authored in. */
 function applySit(c){
   const B=c.bones;if(!B)return;
   const hs=c.hipSign||1,ks=c.kneeSign||-1;
-  if(B.hips&&B.hipsRestY!=null){
-    const seat=(c.seatH!=null?c.seatH:SIT.seat)*(c.root.scale.y||1);
-    const dropM=Math.max(0,(c.hipsStandH||.95)-seat);
-    B.hips.position.y=B.hipsRestY-dropM/(c.hipsUnit||1);
-  }
   if(B.lUp)B.lUp.rotation.x=hs*SIT.thigh;
   if(B.rUp)B.rUp.rotation.x=hs*SIT.thigh;
   if(B.lLo)B.lLo.rotation.x=ks*SIT.shin;
   if(B.rLo)B.rLo.rotation.x=ks*SIT.shin;
+  if(!B.hips||B.hipsRestY==null)return;
+  const seat=(c.seatH!=null?c.seatH:SIT.seat)*(c.root.scale.y||1);
+  if(c._sitOff==null)c._sitOff=0;
+  B.hips.position.y=B.hipsRestY-c._sitOff;
+  c.root.updateMatrixWorld(true);
+  _sitV.setFromMatrixPosition(B.hips.matrixWorld);
+  const above=_sitV.y-c.root.position.y;          // where the pelvis actually is
+  const err=above-seat;                           // positive means still too high
+  if(Math.abs(err)>0.002){
+    const unit=(c.hipsUnit&&c.hipsUnit>1e-6)?c.hipsUnit:1;
+    c._sitOff=Math.max(-4/unit,Math.min(4/unit,c._sitOff+err/unit));
+    B.hips.position.y=B.hipsRestY-c._sitOff;
+    c.root.updateMatrixWorld(true);
+  }
 }
 function releaseSit(c){
   const B=c.bones;if(!B)return;
+  c._sitOff=0;
   if(B.hips&&B.hipsRestY!=null)B.hips.position.y=B.hipsRestY;
 }
 function classify(n){n=n.toLowerCase();
@@ -2339,7 +2353,7 @@ function renderProps(){
     if(c.pose==='sit'){
       propBody.appendChild(slider('Seat height',.15,1.0,.01,
         c.seatH!=null?c.seatH:SIT.seat,v=>v.toFixed(2)+' m',
-        v=>{c.seatH=v;state.thumbsDirty=true;}));
+        v=>{c.seatH=v;c._sitOff=null;state.thumbsDirty=true;}));
       propBody.appendChild(h('<div class="sub" style="margin-top:0">Where the pelvis sits above the floor. A court bench is about 0.45, a low step 0.25.</div>'));
     }
     const cast=h('<div class="seg"><button data-c="lead">Lead</button><button data-c="crowd">Crowd</button></div>');
