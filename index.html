@@ -1774,6 +1774,12 @@ function renderProps(){
     const sp=(typeof STORY!=='undefined'&&STORY[curScene])||{};
     propTitle.textContent=curScene>=0?('SC'+(curScene+1)+' · '+sp.name):'Stage';
     if(sp.time)propBody.appendChild(h(`<div class="row"><label>Time</label><div class="val">${sp.time}</div></div>`));
+    if(sp.beats&&sp.beats.length){
+      const bg=group('What happens',false),bb=bg.querySelector('.gb');
+      sp.beats.forEach((bt,bi)=>bb.appendChild(
+        h('<div class="sub" style="margin-top:'+(bi?'4px':'0')+'">'+(bi+1)+'. '+bt+'</div>')));
+      propBody.appendChild(bg);
+    }
     if(sp.refs&&sp.refs.length){
       const rg=group('Reference'+(sp.location?(' · '+sp.location):''),false);
       const rb=rg.querySelector('.gb');
@@ -4264,15 +4270,17 @@ const LP={
  lateNight:{sky:0x0e1015,fogC:0x0e1016,fogN:24,fogF:86,hemiSky:0x303a58,hemiGround:0x0d0f12,hemiI:.52,keyC:0x9fb4d8,keyI:.65,keyPos:[-14,7,4],fillI:.2,fillC:0x3a4568,skyTop:0x060a14,skyHor:0x141c33,sunI:.04,stars:.70}
 };
 const PIPE={story:'',screenplay:'',world:'',shots:null,blocking:null,coverage:null,
-  locations:[],locIndex:[],spec:null,step:0,busy:false,offline:false,synth:false};
+  locations:[],locIndex:[],scenes:[],spec:null,step:0,busy:false,offline:false,synth:false};
 
 async function ai(system,user,tokens,images){
   let content=user;
   if(images&&images.length){
     content=[];
-    images.slice(0,4).forEach(d=>{
-      const m=/^data:(image\/[a-z]+);base64,(.+)$/i.exec(d||'');
+    images.slice(0,5).forEach(d=>{
+      if(!d)return;
+      const m=/^data:(image\/[a-z]+);base64,(.+)$/i.exec(d);
       if(m)content.push({type:'image',source:{type:'base64',media_type:m[1],data:m[2]}});
+      else if(/^https?:\/\//i.test(d))content.push({type:'image',source:{type:'url',url:d}});
     });
     content.push({type:'text',text:user});
   }
@@ -4330,6 +4338,47 @@ Return JSON only:
 {"set":{"walls":[],"props":[]},"scene":{"name":"","time":"","notes":"","light":"morning","env":{"type":"none"},"chars":[],"cams":[],"shots":[]}}
 light one of dawn/morning/day/dusk/night/lateNight. env.type none or colony (colony adds an Indian apartment colony outside; use elevation for an upper floor).`;
 
+const SYS_CONCEPT=`You are a concept artist. Using the image tools available to you,
+generate ONE photographic-style still that establishes the look of a location for a film crew.
+It is look development, not a plan: palette, materials, clutter, light quality, time of day.
+No people, no text, no camera in frame. A plain empty room or place, as a location scout
+photograph would look. Return the image.`;
+async function conceptImage(loc,world){
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1600,
+      system:SYS_CONCEPT,
+      messages:[{role:'user',content:
+        'LOCATION: '+loc.name+
+        (loc.notes?('\nSCOUT NOTE: '+loc.notes.slice(0,600)):'')+
+        '\n\nWORLD:\n'+String(world||'').slice(0,1200)+
+        '\n\nGenerate the establishing still for this location.'}],
+      mcp_servers:[{type:'url',url:'https://mcp.magnific.com',name:'magnific'}]
+    })
+  });
+  if(!r.ok)throw new Error('image service '+r.status);
+  const d=await r.json();
+  if(d.error)throw new Error(d.error.message||'image service error');
+  const urls=[];
+  (d.content||[]).forEach(b=>{
+    if(b.type==='mcp_tool_result'&&b.content){
+      (b.content||[]).forEach(x=>{
+        const t=(x&&x.text)||'';
+        const m=t.match(/https?:\/\/[^\s"')]+\.(?:png|jpe?g|webp)/i);
+        if(m)urls.push(m[0]);
+        else{ try{const j=JSON.parse(t);
+          ['url','imageUrl','image_url','previewUrl'].forEach(k=>{if(j&&j[k])urls.push(j[k]);});
+        }catch(e){} }
+      });
+    }
+    if(b.type==='text'){
+      const m=b.text.match(/https?:\/\/[^\s"')]+\.(?:png|jpe?g|webp)/i);
+      if(m)urls.push(m[0]);
+    }
+  });
+  if(!urls.length)throw new Error('no image came back');
+  return urls[0];
+}
 const SYS_RECCE=`You are a location scout reading recce photographs of one real place.
 Describe only what the photographs actually show, in a form a set builder can use:
 approximate room proportions in metres and ceiling height; where the openings are, how wide,
@@ -4338,6 +4387,16 @@ the direction and quality of the light; fixed furniture and where it sits.
 If something is not visible in the photographs, say so plainly rather than inventing it.
 Under 180 words, plain prose, no headings.`;
 
+function splitScenes(sp){
+  const lines=(sp||'').split('\n');
+  const idx=[];
+  lines.forEach((l,i)=>{if(/^\s*(INT\.|EXT\.)/i.test(l))idx.push(i);});
+  if(!idx.length)return [{head:'Scene 1',text:(sp||'').slice(0,3000)}];
+  return idx.map((st,k)=>{
+    const en=(k+1<idx.length)?idx[k+1]:lines.length;
+    return {head:lines[st].trim(),text:lines.slice(st,en).join('\n').trim()};
+  });
+}
 function parseLocations(sp){
   const heads=(sp||'').match(/^\s*(INT\.|EXT\.)[^\n]*/gmi)||[];
   const order=[],map={};
@@ -4386,13 +4445,19 @@ Prop kinds: block table column railing plant dryrack fan floor tree stall cart s
 Characters: {name,x,z,rot,gait,crowd,path}. rot in radians, 0 faces +Z, 3.1416 faces -Z.
   gait still|slow|walk|jog. path is [[x,z],...] for anyone who moves, or [] if they hold a mark.
   crowd true for background people, false for the leads.
-Place people where the scene's action requires, with clear space for a camera to see them.
+Before you place anything, work out what physically happens in this scene and what gets touched.
+Place a prop for every object the action uses — if a character sets something down, pours something,
+opens something, that object and the surface it sits on must exist.
+Place people where the action requires, with clear space for a camera to see them.
 Return JSON only:
-{"set":{"walls":[],"props":[]},"chars":[],"light":"morning","env":{"type":"none"},"notes":"one line of staging intent"}
+{"beats":["short line per physical action, in order"],
+ "set":{"walls":[],"props":[]},"chars":[],"light":"morning","env":{"type":"none"},
+ "notes":"one line of staging intent"}
 light dawn|morning|day|dusk|night|lateNight. env.type none or colony (an Indian apartment colony outside; add "elevation" for an upper floor).`;
 
 const SYS_COVER=`You are a director and DP covering ONE scene that is already built and blocked.
-You are given the real set dimensions and where every actor stands. Choose coverage.
+You are given the world it lives in, the location, what physically happens, the real set
+dimensions, and where every actor stands. Choose coverage that serves the beats.
 Do NOT give camera coordinates — describe the shot and the position is computed for you.
 Each shot: {"n",name,subject,size,height,side,angle,lens,move,dur,intent}
   subject: the name of the character the shot is on
@@ -4531,6 +4596,7 @@ function assembleScene(bl,cov,ar){
     if(!env.elevation)delete env.slab;
   }
   return {name:bl.name||'Scene',time:bl.time||'',
+    beats:bl.beats||[],
     notes:((cov&&cov.pattern)?('Coverage: '+cov.pattern+'. '):'')+(bl.notes||''),
     env:env,light:LP[bl.light]||LP.day,props:props,chars:chars,
     cams:cams.length?cams:[{pos:[0,1.55,6],lookAt:[0,1.2,0],focal:35,mode:'static',shake:.26}],
@@ -4670,11 +4736,35 @@ function render(){
         }
         render();
       };
+      loc.concepts=loc.concepts||[];
+      if(loc.concepts.length){
+        c.appendChild(h('<div class="st" style="margin:2px 0 4px">Concept — look only, not measurements</div>'));
+        const cs=h('<div class="pstrip"></div>');
+        loc.concepts.forEach((p,ci)=>{
+          const t=h('<div class="pshot"><b>remove</b></div>');
+          t.style.backgroundImage='url('+p+')';
+          t.style.borderColor='var(--path)';
+          t.onclick=()=>{loc.concepts.splice(ci,1);render();};
+          cs.appendChild(t);
+        });
+        c.appendChild(cs);
+      }
       const ta=h('<textarea placeholder="What the place is actually like — proportions, materials, light, what is out the window."></textarea>');
       ta.style.minHeight='72px';
       ta.value=loc.notes||'';
       ta.oninput=()=>{loc.notes=ta.value;};
       c.appendChild(ta);
+      const gb2=h('<button style="margin-top:6px;margin-right:5px" title="Generate an establishing still to lock the look. Concept art, not a measurement.">Generate a concept still</button>');
+      gb2.onclick=async()=>{
+        if(PIPE.busy)return;
+        busy(true,'Painting '+loc.name+'…');
+        try{
+          const u=await conceptImage(loc,PIPE.world);
+          loc.concepts.push(u);
+        }catch(e){ toastF('No image service reachable — upload a reference instead'); }
+        busy(false);render();
+      };
+      c.appendChild(gb2);
       if(loc.photos.length){
         const rb=h('<button style="margin-top:6px">Read the photographs</button>');
         rb.onclick=async()=>{
@@ -4707,6 +4797,11 @@ function render(){
           (ch.x||0).toFixed(1)+', '+(ch.z||0).toFixed(1)+
           ((ch.path&&ch.path.length>1)?('  ·  walks '+ch.path.length+' points'):'')+'</span></div>'));
       });
+      if(sc.beats&&sc.beats.length){
+        c.appendChild(h('<div class="st" style="margin:7px 0 2px">What happens</div>'));
+        sc.beats.forEach((bt,bi)=>c.appendChild(
+          h('<div class="shotrow"><b>'+(bi+1)+'</b><span class="ds">'+bt+'</span></div>')));
+      }
       if(sc.notes)c.appendChild(h('<div class="st" style="margin:6px 0 0">'+sc.notes+'</div>'));
       wrap.appendChild(c);
     });
@@ -4764,9 +4859,11 @@ fGo.onclick=async()=>{
       const keep={};(PIPE.locations||[]).forEach(l=>{keep[l.name]=l;});
       PIPE.locations=parsed.list.map(l=>{
         const old=keep[l.name];
-        return old?Object.assign(l,{photos:old.photos,notes:old.notes}):l;
+        l.concepts=[];
+        return old?Object.assign(l,{photos:old.photos,notes:old.notes,concepts:old.concepts||[]}):l;
       });
       PIPE.locIndex=parsed.forScene;
+      PIPE.scenes=splitScenes(PIPE.screenplay);
       if(!PIPE.locations.length){
         PIPE.locations=[{name:'SCENE',scenes:[0],photos:[],notes:''}];
         PIPE.locIndex=['SCENE'];
@@ -4789,12 +4886,16 @@ fGo.onclick=async()=>{
                 loc.scenes.filter(x=>x!==k).map(x=>'SC'+(x+1)).join(', ')+
                 '. Build it the same way every time.'):'')+
               (loc.notes?('\nSCOUT NOTE:\n'+loc.notes):'')+
-              (loc.photos.length?('\nThe attached photographs are of this location. '+
+              (loc.photos.length?('\nThe first '+loc.photos.length+
+                ' attached image(s) are PHOTOGRAPHS of the real location. '+
                 'Match their proportions, openings, materials and light. '+
-                'Where the photographs are clear, follow them over the bible.'):'')):'')+
+                'Where a photograph is clear, follow it over the bible.'):'')+
+              ((loc.concepts&&loc.concepts.length)?('\nThe remaining attached image(s) are '+
+                'CONCEPT ART, not evidence. Follow them for palette, clutter and mood only. '+
+                'Do not take geometry, proportions or door positions from them.'):'')):'')+
             '\n\nSCENE '+(k+1)+' OF '+names.length+': '+names[k]+
-            '\n\nSCREENPLAY:\n'+PIPE.screenplay.slice(0,3200),4000,
-            loc?loc.photos:null);
+            '\n\nTHIS SCENE:\n'+(((PIPE.scenes||[])[k]||{}).text||'').slice(0,3000),4000,
+            loc?loc.photos.concat(loc.concepts||[]):null);
           const j=jsonFrom(t);
           j.name=(names[k].replace(/^(INT\.|EXT\.)\s*/i,'').split(' - ')[0]||('Scene '+(k+1))).trim();
           j.time=(names[k].split(' - ')[1]||'').trim();
@@ -4816,13 +4917,20 @@ fGo.onclick=async()=>{
               z:+(c.z||0).toFixed(2),facing:+(c.rot||0).toFixed(2),
               moving:!!(c.path&&c.path.length>1),background:!!c.crowd}));
             const b=setBounds((bl[k].set&&bl[k].set.walls)||[]);
+            const loc2=locFor(k);
+            const scn=(PIPE.scenes||[])[k];
             const t=await ai(SYS_COVER,
-              'SCENE: '+bl[k].name+' — '+(bl[k].time||'')+
+              'WORLD:\n'+String(PIPE.world||'').slice(0,1400)+
+              (loc2?('\n\nLOCATION: '+loc2.name+
+                (loc2.notes?('\n'+loc2.notes.slice(0,700)):'')):'')+
+              '\n\nSCENE: '+bl[k].name+' — '+(bl[k].time||'')+
               '\nSTAGING NOTE: '+(bl[k].notes||'')+
+              ((bl[k].beats&&bl[k].beats.length)?
+                ('\nWHAT HAPPENS:\n- '+bl[k].beats.join('\n- ')):'')+
               '\nSET EXTENT: '+(b?('x '+b.mnx.toFixed(1)+' to '+b.mxx.toFixed(1)+
                 ', z '+b.mnz.toFixed(1)+' to '+b.mxz.toFixed(1)):'open')+
               '\nACTORS ON THEIR MARKS:\n'+JSON.stringify(marks)+
-              '\n\nSCREENPLAY:\n'+PIPE.screenplay.slice(0,2600),3000);
+              '\n\nTHIS SCENE:\n'+(scn?scn.text.slice(0,2400):''),3000);
             const j=jsonFrom(t);
             j.name=bl[k].name;j.time=bl[k].time;
             out.push(j);
@@ -4840,7 +4948,8 @@ fGo.onclick=async()=>{
         PIPE.spec=bl.map((b,k)=>{
           const sc=assembleScene(b,cv[k]||{},state.ar);
           const loc=locFor(k);
-          if(loc){sc.location=loc.name;sc.refs=loc.photos.slice(0,6);}
+          if(loc){sc.location=loc.name;
+            sc.refs=loc.photos.concat(loc.concepts||[]).slice(0,6);}
           return sc;
         });
       }

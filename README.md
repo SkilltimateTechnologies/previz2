@@ -19,11 +19,23 @@ Six stages, each editable before it feeds the next.
 | 6 · Coverage | The Director & DP | Shots described — size, height, side, lens, intent |
 | 7 · Stage | — | Framing solved, scenes loaded, yours to change |
 
+Each stage reads **its own scene's text**, not a truncated copy of the whole script,
+so scene 40 is blocked from scene 40. Blocking also names the physical beats and places
+a prop for every object the action touches; those beats then travel to coverage, so the
+DP knows what is happening and not just who is standing where.
+
 **Locations are parsed from the scene headings**, so a place the film returns to is one
 set built once rather than a fresh guess each time. Drop photographs of the real place
 on a location and they are sent to the designer as vision input — a set built from a
 written description is plausible, a set built from photographs is accurate. The scout
 can also read the photographs and write the note for you.
+
+Locations hold two kinds of image and the prompt tells them apart. **Photographs** of the
+real place are evidence — geometry, openings, materials, light are taken from them.
+**Concept stills**, generated through a connected image service, are look development —
+palette, clutter and mood only, explicitly not geometry. A generated image made from your
+own bible contains no information the bible did not already have, and generated interiors
+are rarely Euclidean; treating the two the same is how a set ends up confidently wrong.
 
 **Framing is computed, not generated.** The DP prompt is forbidden from returning
 coordinates. It says *MCU, low, her left, 50mm*; `solveFraming` turns that into metres.
