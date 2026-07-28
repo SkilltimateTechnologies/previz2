@@ -65,9 +65,20 @@ camera** — so playback cuts between setups the way the previz does. Axis conve
 three.js Y-up to Blender Z-up is handled, and every curve is set to linear because the
 keys were reduced against linear interpolation.
 
-### Exporting shots
+### Exporting
 
-**Export every shot (.glb)** writes one file per shot, frozen at that moment: the set,
+Everything exportable is behind **Export** on the toolbar:
+
+| | |
+|---|---|
+| This shot | `.glb` |
+| Every shot in the film | `.glb` |
+| Cast in exports | blocks · leads posed · all posed |
+| Shot list | `.json` |
+| Baked keyframes | `.json` |
+| Current play mode | `.mp4` |
+
+**Every shot (.glb)** writes one file per shot, frozen at that moment: the set,
 everyone on their marks facing the way they face, the lights, and the single camera that
 shot is taken on. No animation — the moment, not the move. There is the same button for
 one shot at a time in the shot inspector.
