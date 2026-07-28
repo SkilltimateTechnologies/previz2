@@ -71,7 +71,9 @@ Everything exportable is behind **Export** on the toolbar:
 
 | | |
 |---|---|
-| This shot | `.glb` |
+| This scene, all its cameras | `.glb` |
+| Every scene in the film | `.glb` |
+| This shot, its one camera | `.glb` |
 | Every shot in the film | `.glb` |
 | Cast in exports | blocks · leads posed · all posed |
 | Shot list | `.json` |
