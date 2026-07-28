@@ -65,10 +65,20 @@ camera** — so playback cuts between setups the way the previz does. Axis conve
 three.js Y-up to Blender Z-up is handled, and every curve is set to linear because the
 keys were reduced against linear interpolation.
 
-**Export set (.glb)** hands over the greybox itself, openable with File ▸ Import ▸ glTF 2.0.
+### Exporting shots
 
-Use both: glTF carries geometry but cannot carry a lens change, so a dolly zoom survives
-only through the addon.
+**Export every shot (.glb)** writes one file per shot, frozen at that moment: the set,
+everyone on their marks facing the way they face, the lights, and the single camera that
+shot is taken on. No animation — the moment, not the move. There is the same button for
+one shot at a time in the shot inspector.
+
+Files are named `project-SC1_02_The_bench_reading.glb` and open with File ▸ Import ▸
+glTF 2.0. Inside, each is grouped SET / CAST / LIGHTS plus the camera, which carries its
+focal length, focus distance, action and intent as custom properties.
+
+Cast are oriented blocks with a facing marker rather than mannequins — a director needs
+the mark, the direction and whether the person is sitting; nobody needs a figure they are
+going to replace.
 
 The Shots screen is editable: size, lens, height, move and duration write straight back,
 and changing the framing re-solves that camera and reloads the scene. Exports to JSON.
