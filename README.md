@@ -48,6 +48,13 @@ Every shot carries two lines that do different jobs. **Action** is what physical
 happens inside the shot — the line a storyboard artist draws from. **Intent** is why the
 shot exists dramatically. The scene's beats must be covered across its shots, in order.
 
+**Bake keyframes** writes the whole film out as animation keys. Every driver in the app is
+already a pure function of timeline position, so baking is sampling: step each scene to t,
+read the transforms, then discard the samples a straight line between their neighbours would
+have predicted. A static object collapses to two keys; a handheld camera keeps roughly one
+key every three frames because that motion is genuinely per-frame. Output is JSON — position
+and rotation quaternions per character, prop and camera, plus focal, focus, and the cut list.
+
 The Shots screen is editable: size, lens, height, move and duration write straight back,
 and changing the framing re-solves that camera and reloads the scene. Exports to JSON.
 
