@@ -55,6 +55,21 @@ have predicted. A static object collapses to two keys; a handheld camera keeps r
 key every three frames because that motion is genuinely per-frame. Output is JSON — position
 and rotation quaternions per character, prop and camera, plus focal, focus, and the cut list.
 
+### Into Blender
+
+`blender/previz_import.py` is an addon. Install it, then **File ▸ Import ▸ Previz Keys**
+and pick the baked JSON. It builds a collection per scene, a camera per setup with its
+position, rotation, **animated focal length** and focus distance, empties for every
+character and travelling prop, and a timeline marker per shot **bound to that shot's
+camera** — so playback cuts between setups the way the previz does. Axis conversion from
+three.js Y-up to Blender Z-up is handled, and every curve is set to linear because the
+keys were reduced against linear interpolation.
+
+**Export set (.glb)** hands over the greybox itself, openable with File ▸ Import ▸ glTF 2.0.
+
+Use both: glTF carries geometry but cannot carry a lens change, so a dolly zoom survives
+only through the addon.
+
 The Shots screen is editable: size, lens, height, move and duration write straight back,
 and changing the framing re-solves that camera and reloads the scene. Exports to JSON.
 
