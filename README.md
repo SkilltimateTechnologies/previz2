@@ -76,9 +76,16 @@ Files are named `project-SC1_02_The_bench_reading.glb` and open with File ▸ Im
 glTF 2.0. Inside, each is grouped SET / CAST / LIGHTS plus the camera, which carries its
 focal length, focus distance, action and intent as custom properties.
 
-Cast are oriented blocks with a facing marker rather than mannequins — a director needs
-the mark, the direction and whether the person is sitting; nobody needs a figure they are
-going to replace.
+Cast export three ways, cycled from the **Cast** chip. **Blocks** are oriented boxes with a
+facing marker — the mark, the direction, whether the person is sitting. **Leads posed**
+gives real mannequins in their actual pose for the principals and blocks for the crowd,
+which is the default. **All posed** includes everyone.
+
+The pose is baked on the CPU: every vertex is walked through the skeleton once and written
+as a plain mesh. A skinned mesh plus its armature would arrive in Blender at bind pose
+unless the animation came with it — and twenty-eight rigs would be unusable regardless.
+For the courtroom that is about 47k vertices a shot for the leads, against 218k for
+everyone.
 
 The Shots screen is editable: size, lens, height, move and duration write straight back,
 and changing the framing re-solves that camera and reloads the scene. Exports to JSON.
