@@ -140,6 +140,16 @@ duration as dropdowns, name and action as text. It reads as a shot list a 1st AD
 work from, and a beat nobody covered shows in red across the row. **Cards** gives one shot
 the full width for writing action and intent.
 
+Each shot carries a **status** — rough, framed or locked. Rough means it exists but the
+framing is not decided; framed means the camera is where you want it; locked means leave
+it alone, **and locking a shot locks the camera it is taken on**, so the document and the
+stage cannot disagree. The header counts them, so you can see at a glance how much of the
+film is settled.
+
+Rows select by clicking the box in the first column, with shift-click taking the run
+between. A bar appears offering purpose, status and size across the whole selection, and
+delete, which retimes the shots that follow. Escape clears.
+
 The Shots screen is editable: size, lens, height, move and duration write straight back,
 and changing the framing re-solves that camera and reloads the scene. Exports to JSON.
 
