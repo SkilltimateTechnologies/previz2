@@ -72,6 +72,23 @@ have predicted. A static object collapses to two keys; a handheld camera keeps r
 key every three frames because that motion is genuinely per-frame. Output is JSON — position
 and rotation quaternions per character, prop and camera, plus focal, focus, and the cut list.
 
+### Storage
+
+Work is written to IndexedDB on a debounce and restored when you reopen, with a save
+indicator in the toolbar and a warning if you leave with anything unwritten.
+
+All of it goes through one adapter. Setting `window.PREVIZ_API` to an endpoint in front
+of Turso makes the remote authoritative and leaves IndexedDB as the offline cache —
+nothing above the adapter changes, and a failed sync degrades to *local only* rather
+than losing the work.
+
+`db/schema.ts` is the Drizzle schema. The shape rule is: **normalise what gets queried
+across the film, keep as JSON what is only ever loaded whole.** Shots and beats are rows,
+because coverage is a question you ask — which beats nobody shot, how much of the film is
+reaction, every shot on one character. Blocking is a JSON column, because nobody queries
+an individual wall and a scene's set loads as one unit. Reference images live in object
+storage and the database holds keys.
+
 ### Into Blender
 
 `blender/previz_import.py` is an addon. Install it, then **File ▸ Import ▸ Previz Keys**
