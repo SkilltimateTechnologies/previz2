@@ -44,6 +44,23 @@ palette, clutter and mood only, explicitly not geometry. A generated image made 
 own bible contains no information the bible did not already have, and generated interiors
 are rarely Euclidean; treating the two the same is how a set ends up confidently wrong.
 
+### Beats
+
+A **beat** is one thing that changes — an argument made, a question answered, a reveal, a
+decision. Standing up is not a beat. Cutting to a face is not a beat; it is coverage of
+one. Beats sit between the screenplay and the shots, and every shot declares which beat it
+covers and with what **purpose**: establish, statement, reaction, insert or punctuation.
+
+That makes coverage checkable rather than assumed. The Shots screen is a beat sheet with
+its shots nested under each beat, and it says plainly when a beat has no shot on it or a
+shot points at a beat that does not exist.
+
+**Eyeline** follows from beats: a character set to watch the speaker turns their head to
+whoever drives the current beat. Which local axis comes out of a head differs between
+rigs, so it is measured at load rather than assumed, and the turn is clamped to 66 degrees
+so nobody breaks their neck. In Courtroom 3 the whole room — bench, bar, litigants and
+twelve of the public — turns to whoever is talking.
+
 Every shot carries two lines that do different jobs. **Action** is what physically
 happens inside the shot — the line a storyboard artist draws from. **Intent** is why the
 shot exists dramatically. The scene's beats must be covered across its shots, in order.
