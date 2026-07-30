@@ -134,10 +134,23 @@ unless the animation came with it — and twenty-eight rigs would be unusable re
 For the courtroom that is about 47k vertices a shot for the leads, against 218k for
 everyone.
 
-The Shots screen has two views. **Table** is the default — one row per shot, grouped under
+### Dialogue
+
+The screenplay is parsed once into cue, parenthetical and line, so what is said survives
+into the shots instead of being discarded at the scene split. Beats carry the line;
+a shot inherits the line of the beat it covers and can override it.
+
+The line appears on the board, in the table under the action, on the card and in the shot
+inspector, and travels into the glb and the exported shot list. Where a line is long
+against the shot's duration the table offers a length in the seconds cell — roughly two
+and a half words a second plus a moment either side — which you can click to accept.
+
+The Shots screen has three views. **Table** is the default — one row per shot, grouped under
 its beat, with every field editable in place: purpose, size, lens, height, side, move and
 duration as dropdowns, name and action as text. It reads as a shot list a 1st AD would
-work from, and a beat nobody covered shows in red across the row. **Cards** gives one shot
+work from, and a beat nobody covered shows in red across the row. **Board** is the storyboard: rendered frames in a grid at three densities, each with its
+slate, its line and its action, and clicking a frame opens that shot on the stage.
+**Cards** gives one shot
 the full width for writing action and intent.
 
 Each shot carries a **status** — rough, framed or locked. Rough means it exists but the
