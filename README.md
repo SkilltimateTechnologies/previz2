@@ -134,6 +134,12 @@ unless the animation came with it — and twenty-eight rigs would be unusable re
 For the courtroom that is about 47k vertices a shot for the leads, against 218k for
 everyone.
 
+The Shots screen has two views. **Table** is the default — one row per shot, grouped under
+its beat, with every field editable in place: purpose, size, lens, height, side, move and
+duration as dropdowns, name and action as text. It reads as a shot list a 1st AD would
+work from, and a beat nobody covered shows in red across the row. **Cards** gives one shot
+the full width for writing action and intent.
+
 The Shots screen is editable: size, lens, height, move and duration write straight back,
 and changing the framing re-solves that camera and reloads the scene. Exports to JSON.
 
