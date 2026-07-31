@@ -109,6 +109,26 @@ else.
 **Object storage** — reference photographs and rendered frames. `assets` holds R2 keys,
 never bytes.
 
+### Two scopes, and the line between them
+
+This is the rule most likely to be got wrong, because the wrong version works fine until
+someone opens a second project.
+
+**Machine scope** — belongs to the user and follows them everywhere: API keys, which
+image endpoint, which TTS endpoint, which model runs which pipeline stage. In the client
+these live in `SETTINGS`; on the server they belong to the user or the organisation.
+
+**Project scope** — belongs to one film: character voices, the fallback voice, how closely
+generation holds the blocking, output resolution, how many references travel, how the cast
+exports. In the client these live in `PROJ` and are saved and restored with the project.
+
+The test is simple: **could this value be meaningless in another project?** A voice
+assigned to *Judge Murthy* is meaningless in a film he is not in — it would follow the user
+across and silently apply to nobody. A fal key is meaningful everywhere.
+
+Schema-wise: machine scope goes on `users`; project scope goes in a `settings` JSON column
+on `projects`.
+
 ### Migrations
 
 Drizzle Kit. Generated migrations are committed. `drizzle-kit push` is forbidden outside
@@ -331,7 +351,7 @@ SEED_ADMIN_PASSWORD=…                   # development seed only, see §11
 `pnpm db:seed` creates:
 
 - **Admin user** — `admin@skilltimate.studio`, role `admin`, password taken from
-  `SEED_ADMIN_PASSWORD`, hashed by Better Auth (argon2id). The value is `Demo@123` for
+  `SEED_ADMIN_PASSWORD`, hashed by Better Auth (argon2id). The value is `Demo@12345` for
   local development.
 - The three worked examples as read-only template projects: *Two Signatures*, *Return
   Ticket*, *Rooms*.
@@ -343,10 +363,17 @@ SEED_ADMIN_PASSWORD=…                   # development seed only, see §11
 - **Never committed.** It lives in `.env`, and `.env.example` carries the key with an
   empty value.
 - **Never stored in plaintext.** Better Auth hashes it; the database holds the hash.
-- The seeded account is created with `mustChangePassword: true`. First login redirects to
-  a change-password screen and no other route is reachable until it is done.
-- Staging and production get a generated password, printed once to the deploy log and
-  never persisted.
+- **Development convenience.** When `NODE_ENV !== 'production'`, the sign-in form
+  pre-fills the seed email and password so the developer is not retyping them all day.
+  This is gated on the environment in the component, not hidden with CSS, and the values
+  come from a dev-only endpoint that returns `404` outside development.
+- **Because of that pre-fill, `mustChangePassword` is set only outside development.**
+  Forcing a change on an account whose whole purpose is a one-click local login is theatre;
+  forcing it anywhere real is not.
+- Staging and production get a generated password, printed once to the deploy log and never
+  persisted, with `mustChangePassword: true` and no pre-fill.
+- **CI must fail** if `Demo@12345` appears anywhere outside `BUILD-SPEC.md` and a
+  development-only fixture.
 
 ---
 
@@ -401,10 +428,20 @@ client bundle for `ANTHROPIC` and for `sk-ant` returns nothing.
 
 ### M5 — Deliverables
 
-PDF storyboard: rendered frame, slate, action, intent, grouped by beat. CSV shot list.
-Bulk frame zip. The existing glTF, MP4 and JSON exports keep working.
+Printable storyboard, CSV shot list with in/out timecode, SRT subtitles, bulk frame zip.
+The existing glTF, MP4 and JSON exports keep working.
 
-**Done when:** a producer can be handed a PDF and a CSV without opening the app.
+**Done when:** a producer can be handed a PDF, a 1st AD a CSV, and an editor an SRT,
+none of them opening the app.
+
+### M5b — Generation
+
+Image and voice generation behind the server proxy, per-shot and per-scene, with an
+activity log recording what was made, what failed and why, and what it cost.
+
+**Done when:** a scene generation that dies at shot five of eight leaves a readable record
+of the four that succeeded and the reason the fifth stopped — and a second attempt does not
+regenerate the four.
 
 ### M6 — Sign-off
 
@@ -434,6 +471,10 @@ Concretely, so it can be checked:
   because nothing checked it against optics.
 - **Migrations are files.** No `push` outside local.
 - **Commits explain why.** A commit that says "fix bug" is a defect.
+- **Every destructive action is undoable.** Reorder, trim, delete, and anything that
+  removes generated work. This was got wrong once: an editing timeline shipped with no
+  undo, which is a safety regression rather than a missing feature.
+- **Ask which scope a value belongs to before adding it.** See §5.
 
 ---
 
@@ -454,6 +495,17 @@ will hit each of them.
   1.75 m person — a ratio of **2.5**, not 0.88. Getting this wrong put every solved camera
   four times too far back.
 - **The control that hides a thing cannot live inside the thing.**
+- **A value that names a character cannot be a global preference.** Voices were stored
+  globally and would have followed the user into a film those characters are not in.
+- **Deleting a thing must clean up what only it referenced.** Removing a shot left its
+  camera in the scene forever — exported, listed, belonging to nothing. Prune only what the
+  deletion orphaned; a camera someone placed deliberately is not rubbish.
+- **A check that cannot fail is worse than no check.** A verification script shipped that
+  reported success on a file with two missing functions, because its own comment stripper
+  was swallowing the file. Watch a check fail on purpose before trusting it.
+- **A stubbed DOM is not a DOM.** Building elements with `div.innerHTML` silently drops
+  `<tr>`, `<td>` and `<tbody>`; a proxy-based test harness cannot see that, because it
+  never parses HTML.
 
 ---
 
