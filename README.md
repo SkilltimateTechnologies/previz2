@@ -72,6 +72,22 @@ have predicted. A static object collapses to two keys; a handheld camera keeps r
 key every three frames because that motion is genuinely per-frame. Output is JSON — position
 and rotation quaternions per character, prop and camera, plus focal, focus, and the cut list.
 
+### Visuals
+
+**Visuals** on the toolbar opens the generation step: scene tabs across the top, every shot
+in the scene as a card showing the blocking and the generated image side by side, and
+Generate or Regenerate on each. There is a Generate this scene for the whole tab, and a
+Generate this shot in the shot inspector.
+
+The blocking frame is the conditioning image, rendered at 1024, and the prompt is
+everything the pipeline already knows: the solved framing, the action, the beat's line,
+the location note or research, and the sheets for whoever is in frame. A strength control
+decides how much of the blocking survives — low keeps your geometry and lighting, high
+lets the model reinterpret. Prompt is visible per shot before you spend anything.
+
+The fal.ai key lives in **Settings** inside that overlay, stored in this browser only.
+For a deployed build it belongs behind your own server — see BUILD-SPEC section 7.
+
 ### Storage
 
 Work is written to IndexedDB on a debounce and restored when you reopen, with a save
