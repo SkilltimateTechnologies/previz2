@@ -83,10 +83,12 @@ Approval is a real gate rather than a label: **generation refuses an unapproved 
 and **The Cut** only opens once every shot is approved — a generated image costs money and
 blocking you are still changing is not worth spending it on.
 
-The Cut plays the film as pictures: every shot end to end at its own length, a scrubbable
-track showing each shot sized by its duration, and a slate carrying the shot number, its
-framing and its line. Shots without a generated image fall back to their blocking and say
-so, so the cut works before you have spent anything.
+**The Cut is the stage itself with the pictures in place of the blocking** — the same
+timeline, the same filmstrip, the same transport, the same shot panel. The viewport shows
+the generated image for whatever shot the playhead is on, with a slate carrying the shot
+number, its framing and its line. The filmstrip shows the finals, greying out anything not
+yet generated, and those shots play as their blocking so the cut works before you have spent
+everything. **Final cut** on the toolbar toggles it, and step eight is the same door.
 
 Shots can be added from the beat they should cover — **+ shot** or **+ reaction** on any
 beat row. A new shot is framed by the solver from that beat's speaker, so it arrives
