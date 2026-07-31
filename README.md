@@ -18,6 +18,7 @@ Six stages, each editable before it feeds the next.
 | 5 · Scenes | The Designer & AD | Every scene: set, marks, and what physically happens |
 | 6 · Shots | The Director & DP | Every shot: its action, its framing, and why it exists |
 | 7 · Stage | — | Framing solved, scenes loaded, yours to change |
+| 8 · The Cut | — | The approved shots as pictures, in order, at their real lengths |
 
 Each stage reads **its own scene's text**, not a truncated copy of the whole script,
 so scene 40 is blocked from scene 40. Blocking also names the physical beats and places
@@ -71,6 +72,25 @@ read the transforms, then discard the samples a straight line between their neig
 have predicted. A static object collapses to two keys; a handheld camera keeps roughly one
 key every three frames because that motion is genuinely per-frame. Output is JSON — position
 and rotation quaternions per character, prop and camera, plus focal, focus, and the cut list.
+
+### Approval, and the cut
+
+Each shot is **rough**, **framed** or **approved**. Approving a shot locks the camera it
+is taken on, so a signed-off frame cannot drift. Whole scenes can be approved from their
+header row in the shots table.
+
+Approval is a real gate rather than a label: **generation refuses an unapproved shot**,
+and **The Cut** only opens once every shot is approved — a generated image costs money and
+blocking you are still changing is not worth spending it on.
+
+The Cut plays the film as pictures: every shot end to end at its own length, a scrubbable
+track showing each shot sized by its duration, and a slate carrying the shot number, its
+framing and its line. Shots without a generated image fall back to their blocking and say
+so, so the cut works before you have spent anything.
+
+Shots can be added from the beat they should cover — **+ shot** or **+ reaction** on any
+beat row. A new shot is framed by the solver from that beat's speaker, so it arrives
+pointing at the right person from a sensible place, and everything after it retimes.
 
 ### Visuals
 
