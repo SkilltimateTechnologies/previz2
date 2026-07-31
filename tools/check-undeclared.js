@@ -1,75 +1,125 @@
-/* Calls to things that were never declared.
-   Three bugs have had this exact shape: orbiting, WEB_TOOL, paintFinal — each a
-   reference left behind when a range was removed. The parser cannot see them because
-   they are valid syntax, and the proxy harness cannot see them unless that line runs. */
-const fs=require('fs');
-const src=fs.readFileSync(process.argv[2]||'previz-stage.html','utf8');
-let raw=src.match(/<script type="module">([\s\S]*)<\/script>\s*$/)[1];
-/* the embedded character is one enormous base64 literal; naive string stripping
-   chokes on it and then sees the rest of the file as string contents */
-raw=raw.replace(/[A-Za-z0-9+/=]{400,}/g,'BASE64');
-let body=raw.replace(/\/\*[\s\S]*?\*\//g,' ')
-         .replace(/^\s*\/\/[^\n]*/gm,' ')
-         .replace(/`(?:\\.|[^\\`])*`/g,'`S`')
-         .replace(/'(?:\\.|[^\\'])*'/g,"'S'")
-         .replace(/"(?:\\.|[^\\"])*"/g,'"S"');
+#!/usr/bin/env node
+/*
+ * check-undeclared.js — report calls to names the file never declares.
+ *
+ * Three bugs have had exactly this shape, each a reference left behind when a block of
+ * code was removed and something added later happened to sit inside the range:
+ *
+ *   orbiting     a leftover from the hand-rolled orbit controls
+ *   WEB_TOOL     defined by a patch that aborted; the callers shipped
+ *   paintFinal   swallowed when the Visuals overlay was deleted
+ *
+ * Neither existing check finds these. The parser cannot, because the syntax is valid.
+ * A stubbed-DOM harness cannot, unless that particular line happens to run.
+ *
+ *   node tools/check-undeclared.js index.html
+ */
+const fs = require('fs');
+const file = process.argv[2] || 'index.html';
+const src = fs.readFileSync(file, 'utf8');
+const m = src.match(/<script type="module">([\s\S]*)<\/script>\s*$/);
+if (!m) { console.error('no module script found in ' + file); process.exit(2); }
+const code = m[1];
 
-const declared=new Set();
-/* declarations come from the raw text: they are never inside a string, and reading
-   them there is immune to whatever the stripper gets wrong */
-[...raw.matchAll(/\bfunction\s+([A-Za-z_$][\w$]*)/g)].forEach(m=>declared.add(m[1]));
-[...body.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)/g)].forEach(m=>declared.add(m[1]));
-[...body.matchAll(/\b(?:const|let|var)\s*\{([^}]*)\}/g)].forEach(m=>
-  m[1].split(',').forEach(x=>{const n=x.split(':').pop().trim().split('=')[0].trim();if(n)declared.add(n);}));
-[...body.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*,\s*([A-Za-z_$][\w$]*)/g)]
-  .forEach(m=>{declared.add(m[1]);declared.add(m[2]);});
-[...body.matchAll(/([A-Za-z_$][\w$]*)\s*=>/g)].forEach(m=>declared.add(m[1]));
-[...body.matchAll(/\(([^)]{0,120})\)\s*=>/g)].forEach(m=>
-  m[1].split(',').forEach(x=>{const n=x.trim().split(/[=\s]/)[0];if(n)declared.add(n);}));
-[...body.matchAll(/function[^(]*\(([^)]*)\)/g)].forEach(m=>
-  m[1].split(',').forEach(x=>{const n=x.trim().split(/[=\s]/)[0];if(n)declared.add(n);}));
-[...body.matchAll(/catch\s*\(\s*([A-Za-z_$][\w$]*)/g)].forEach(m=>declared.add(m[1]));
-
-/* declared later in the file is still declared: function declarations hoist and const
-   declarations inside a scope are visible to calls in that same scope. This is a
-   whole-file check, so order does not matter. */
-const GLOBALS=new Set(('THREE OrbitControls TransformControls GLTFLoader GLTFExporter SkeletonUtils '+
- 'document window console Math JSON Object Array String Number Boolean Set Map Promise Date Error '+
- 'setTimeout setInterval clearInterval clearTimeout requestAnimationFrame cancelAnimationFrame '+
- 'fetch atob btoa parseInt parseFloat isFinite isNaN encodeURIComponent decodeURIComponent '+
- 'Uint8Array Float32Array Int32Array Blob URL FileReader Image MediaRecorder VideoEncoder VideoFrame '+
- 'ResizeObserver indexedDB performance devicePixelRatio alert confirm prompt Symbol RegExp Function '+
- 'if for while switch catch return typeof instanceof new delete void yield await async of in '+
- 'super this arguments constructor import function addEventListener').split(/\s+/));
-
-/* every call that is not a method call */
-const calls=new Map();
-const lines=body.split('\n');
-lines.forEach((l,i)=>{
-  [...l.matchAll(/(^|[^.\w$])([A-Za-z_$][\w$]*)\s*\(/g)].forEach(m=>{
-    const n=m[2];
-    if(GLOBALS.has(n)||declared.has(n))return;
-    if(!calls.has(n))calls.set(n,i+1);
-  });
-});
-if(!calls.size)console.log('no calls to undeclared names');
-else{
-  console.log('CALLS TO UNDECLARED NAMES:');
-  [...calls].forEach(([n,l])=>console.log('  L'+l+'  '+n+'()'));
-  process.exitCode=1;
+/* A scanner, not regexes. Stripping comments and strings with regexes fails on a file
+   this size: one apparent block-comment opener inside a string or a regex literal
+   swallows everything after it, and the checker then reports nothing at all — which is
+   worse than useless, because it reports success. This walks character by character. */
+function blank(s) {
+  const out = new Array(s.length);
+  let i = 0, prev = '';
+  const regexPos = () => prev === '' || /[({[,;:=!&|?+\-*%~^<>]$/.test(prev) ||
+    /\b(return|typeof|instanceof|in|of|new|delete|void|case|do|else|yield|await)$/.test(prev);
+  while (i < s.length) {
+    const c = s[i], n = s[i + 1];
+    if (c === '/' && n === '/') { while (i < s.length && s[i] !== '\n') out[i++] = ' '; continue; }
+    if (c === '/' && n === '*') {
+      out[i++] = ' '; out[i++] = ' ';
+      while (i < s.length && !(s[i] === '*' && s[i + 1] === '/')) { out[i] = s[i] === '\n' ? '\n' : ' '; i++; }
+      if (i < s.length) { out[i++] = ' '; out[i++] = ' '; }
+      continue;
+    }
+    if (c === '"' || c === "'" || c === '`') {
+      const q = c; out[i++] = ' ';
+      while (i < s.length) {
+        if (s[i] === '\\') { out[i++] = ' '; if (i < s.length) out[i++] = ' '; continue; }
+        if (s[i] === q) { out[i++] = ' '; break; }
+        out[i] = s[i] === '\n' ? '\n' : ' '; i++;
+      }
+      prev = 'x'; continue;
+    }
+    if (c === '/' && regexPos()) {
+      out[i++] = ' '; let inClass = false;
+      while (i < s.length) {
+        if (s[i] === '\\') { out[i++] = ' '; if (i < s.length) out[i++] = ' '; continue; }
+        if (s[i] === '[') inClass = true;
+        else if (s[i] === ']') inClass = false;
+        else if (s[i] === '/' && !inClass) { out[i++] = ' '; break; }
+        else if (s[i] === '\n') break;
+        out[i++] = ' ';
+      }
+      while (i < s.length && /[gimsuyd]/.test(s[i])) out[i++] = ' ';
+      prev = 'x'; continue;
+    }
+    out[i] = c;
+    if (!/\s/.test(c)) prev = (prev + c).slice(-12);
+    i++;
+  }
+  return out.join('');
 }
-/* bare identifier reads of app-looking names */
-const reads=new Map();
-lines.forEach((l,i)=>{
-  [...l.matchAll(/(^|[^.\w$'"])([a-z][A-Za-z0-9_$]{3,})(?=\s*(?:[.\)\],;=!<>&|?+\-*/]|$))/g)]
-    .forEach(m=>{
-      const n=m[2];
-      if(GLOBALS.has(n)||declared.has(n)||calls.has(n))return;
-      if(!reads.has(n))reads.set(n,i+1);
-    });
+const clean = blank(code);
+
+/* Declarations read from the cleaned source, so a name inside a comment cannot count as
+   one — that would hide the very bug this looks for. */
+const declared = new Set();
+const add = n => { if (n && /^[A-Za-z_$][\w$]*$/.test(n)) declared.add(n); };
+for (const x of clean.matchAll(/\bfunction\s*\*?\s*([A-Za-z_$][\w$]*)/g)) add(x[1]);
+for (const x of clean.matchAll(/\bclass\s+([A-Za-z_$][\w$]*)/g)) add(x[1]);
+for (const x of clean.matchAll(/\b(?:const|let|var)\s+([^;=\n]+)/g))
+  x[1].split(',').forEach(p => add(p.replace(/[[\]{}]/g, ' ').split(':').pop().trim().split(/[\s=(]/)[0]));
+for (const x of clean.matchAll(/([A-Za-z_$][\w$]*)\s*=>/g)) add(x[1]);
+for (const x of clean.matchAll(/\(([^()]{0,300})\)\s*=>/g))
+  x[1].split(',').forEach(p => add(p.trim().split(/[=\s]/)[0]));
+for (const x of clean.matchAll(/function[^(]{0,60}\(([^()]{0,300})\)/g))
+  x[1].split(',').forEach(p => add(p.trim().split(/[=\s]/)[0]));
+for (const x of clean.matchAll(/catch\s*\(\s*([A-Za-z_$][\w$]*)/g)) add(x[1]);
+for (const x of clean.matchAll(/\bimport\s*\{([^}]*)\}/g))
+  x[1].split(',').forEach(p => add(p.trim().split(/\s+as\s+/).pop()));
+for (const x of clean.matchAll(/\bimport\s+\*\s+as\s+([A-Za-z_$][\w$]*)/g)) add(x[1]);
+
+const BUILTIN = new Set((`
+  THREE OrbitControls TransformControls GLTFLoader GLTFExporter SkeletonUtils
+  document window console navigator location history globalThis
+  Math JSON Object Array String Number Boolean Set Map WeakMap WeakSet Promise Date
+  Error TypeError RangeError RegExp Symbol Function Proxy Reflect BigInt Intl
+  setTimeout setInterval clearTimeout clearInterval queueMicrotask
+  requestAnimationFrame cancelAnimationFrame addEventListener removeEventListener
+  fetch atob btoa parseInt parseFloat isFinite isNaN structuredClone eval
+  encodeURIComponent decodeURIComponent encodeURI decodeURI
+  Uint8Array Uint16Array Uint32Array Int8Array Int16Array Int32Array
+  Float32Array Float64Array ArrayBuffer DataView
+  Blob File FileReader URL FormData Headers Request Response AbortController
+  Image Audio Worker MediaRecorder VideoEncoder VideoFrame AudioContext OffscreenCanvas
+  ResizeObserver MutationObserver IntersectionObserver
+  indexedDB localStorage sessionStorage performance devicePixelRatio
+  alert confirm prompt
+  if for while do switch catch finally return throw typeof instanceof new delete void
+  yield await async function class extends super this arguments import export default
+`).trim().split(/\s+/));
+
+const problems = [];
+const rawLines = code.split('\n');
+clean.split('\n').forEach((line, i) => {
+  for (const x of line.matchAll(/(^|[^.\w$])([A-Za-z_$][\w$]*)\s*\(/g)) {
+    const name = x[2];
+    if (BUILTIN.has(name) || declared.has(name)) continue;
+    if (problems.some(p => p.name === name)) continue;
+    problems.push({ name, line: i + 1, text: (rawLines[i] || '').trim().slice(0, 90) });
+  }
 });
-const suspicious=[...reads].filter(([n])=>/^(paint|render|draw|set|update|ensure|apply|make|build)/.test(n));
-if(suspicious.length){
-  console.log('\nSUSPICIOUS READS:');
-  suspicious.forEach(([n,l])=>console.log('  L'+l+'  '+n));
-}
+console.log(file + ' — ' + declared.size + ' names declared, ' + rawLines.length + ' lines scanned');
+if (!problems.length) { console.log('no calls to undeclared names'); process.exit(0); }
+console.log('\nCALLS TO UNDECLARED NAMES\n');
+problems.forEach(p => { console.log('  L' + p.line + '  ' + p.name + '()'); console.log('     ' + p.text); });
+console.log('\n' + problems.length + ' problem' + (problems.length > 1 ? 's' : ''));
+process.exit(1);
