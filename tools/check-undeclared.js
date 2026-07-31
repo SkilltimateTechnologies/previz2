@@ -83,6 +83,10 @@ for (const x of clean.matchAll(/\(([^()]{0,300})\)\s*=>/g))
 for (const x of clean.matchAll(/function[^(]{0,60}\(([^()]{0,300})\)/g))
   x[1].split(',').forEach(p => add(p.trim().split(/[=\s]/)[0]));
 for (const x of clean.matchAll(/catch\s*\(\s*([A-Za-z_$][\w$]*)/g)) add(x[1]);
+/* Object-literal and class method shorthand — `get(){}`, `paint(a,b){}` — is a
+   declaration, not a call. No valid call is followed by a brace, so this is safe: it
+   cannot hide a genuinely missing function, because `missing(x) {` is not valid JS. */
+for (const x of clean.matchAll(/([A-Za-z_$][\w$]*)\s*\([^()]{0,200}\)\s*\{/g)) add(x[1]);
 for (const x of clean.matchAll(/\bimport\s*\{([^}]*)\}/g))
   x[1].split(',').forEach(p => add(p.trim().split(/\s+as\s+/).pop()));
 for (const x of clean.matchAll(/\bimport\s+\*\s+as\s+([A-Za-z_$][\w$]*)/g)) add(x[1]);
