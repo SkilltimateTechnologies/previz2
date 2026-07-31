@@ -96,6 +96,11 @@ pointing at the right person from a sensible place, and everything after it reti
 
 ### Visuals
 
+Approval and generation are separate jobs in separate places. The shot panel on the stage
+carries one big **Approve** button — blue while there is something to do, green once signed
+off — and nothing else about images; it is for directing the shot. Generation happens in
+**Visuals**, and **Final cut** is where you watch the result.
+
 **Visuals** on the toolbar opens the generation step: scene tabs across the top, every shot
 in the scene as a card showing the blocking and the generated image side by side, and
 Generate or Regenerate on each. There is a Generate this scene for the whole tab, and a
