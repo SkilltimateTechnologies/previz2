@@ -117,8 +117,34 @@ frame, Loose lets it re-frame. Resolution is 1K, 2K or 4K, and the reference cou
 capped where you want it. Each card says how many images it will send and whose, and the
 exact prompt is visible before you spend anything.
 
-The fal.ai key lives in **Settings** inside that overlay, stored in this browser only.
-For a deployed build it belongs behind your own server — see BUILD-SPEC section 7.
+### Settings
+
+**Dashboard ▸ Settings**, in three tabs.
+
+**Keys** — Claude, Kimi, GPT/Codex and fal.ai, each with a light showing whether it is set.
+Every key stays in this browser and goes only to the service it belongs to. That also means
+nothing is shared between machines; for a deployed build they belong behind your own API,
+see BUILD-SPEC section 7.
+
+**Models** — each pipeline stage picks its own provider and model, because the stages do
+not ask the same thing:
+
+| stage | what it actually demands |
+|---|---|
+| Screenplay | long-form prose and format discipline; the longest single output |
+| World bible | research and the restraint to say what is unsettled — **uses web search** |
+| Location research | measurements of how a real place is built, without inventing one — **web search** |
+| Character sheets | concrete physical description grounded in a place and a job — **web search** |
+| Blocking | strict JSON full of numbers, and spatial sense; the stage most sensitive to a weak model |
+| Coverage | directorial judgement inside a rigid schema |
+| Shot chat | small fast edits; latency over depth |
+
+Assign a stage to a provider without web search and it says so, plainly: that stage will
+answer from memory and cite nothing. Model names are text fields with a default rather than
+a list, because they move faster than this file does.
+
+**Images** — the fal endpoint. Nano Banana 2 Edit is the default because it accepts several
+references and reasons about what to preserve.
 
 ### Storage
 
