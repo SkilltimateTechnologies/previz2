@@ -79,11 +79,23 @@ in the scene as a card showing the blocking and the generated image side by side
 Generate or Regenerate on each. There is a Generate this scene for the whole tab, and a
 Generate this shot in the shot inspector.
 
-The blocking frame is the conditioning image, rendered at 1024, and the prompt is
-everything the pipeline already knows: the solved framing, the action, the beat's line,
-the location note or research, and the sheets for whoever is in frame. A strength control
-decides how much of the blocking survives — low keeps your geometry and lighting, high
-lets the model reinterpret. Prompt is visible per shot before you spend anything.
+It runs on `fal-ai/nano-banana-2/edit`, which takes several reference images and reasons
+about what to change and what to preserve. So the references are **sent**, not described:
+
+- **Image 1** is always the blocking render, at 1024. The prompt names its job — camera
+  position, lens, framing, and where every person stands, how they are posed and who they
+  are looking at.
+- **Then the location photographs**, told to supply architecture, materials, wear and the
+  quality of the light, and told that where they disagree with image 1 about a surface the
+  photograph wins, but image 1 always decides the camera and the layout.
+- **Then a sheet per character actually in that shot**, named, for face, build, hair and
+  wardrobe, and to keep them the same person across every shot.
+
+Because the model follows instructions rather than a denoising strength, the control is
+**how closely to hold the blocking** — Exact tells it not to move the camera or anyone in
+frame, Loose lets it re-frame. Resolution is 1K, 2K or 4K, and the reference count is
+capped where you want it. Each card says how many images it will send and whose, and the
+exact prompt is visible before you spend anything.
 
 The fal.ai key lives in **Settings** inside that overlay, stored in this browser only.
 For a deployed build it belongs behind your own server — see BUILD-SPEC section 7.
