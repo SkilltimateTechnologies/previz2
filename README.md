@@ -123,6 +123,18 @@ Because the model follows instructions rather than a denoising strength, the con
 **how closely to hold the blocking** — Exact, Close or Loose — with resolution and the
 reference cap alongside it in **Settings ▸ Images**.
 
+### Checks
+
+`tools/check-undeclared.js` reports calls to names the file never declares. Three bugs have
+had exactly that shape — each one a reference left behind when a block of code was removed
+and something added later happened to sit inside the range. The parser cannot see them
+because they are valid syntax, and a stubbed-DOM harness cannot see them unless that
+particular line runs.
+
+```
+node tools/check-undeclared.js index.html
+```
+
 ### Storage
 
 Work is written to IndexedDB on a debounce and restored when you reopen, with a save
