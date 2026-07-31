@@ -94,17 +94,18 @@ Shots can be added from the beat they should cover — **+ shot** or **+ reactio
 beat row. A new shot is framed by the solver from that beat's speaker, so it arrives
 pointing at the right person from a sensible place, and everything after it retimes.
 
-### Visuals
+### Final cut
 
-Approval and generation are separate jobs in separate places. The shot panel on the stage
-carries one big **Approve** button — blue while there is something to do, green once signed
-off — and nothing else about images; it is for directing the shot. Generation happens in
-**Visuals**, and **Final cut** is where you watch the result.
+**Final cut** is the stage with the pictures in place of the blocking — the same timeline,
+filmstrip, transport and shot panel. The viewport shows the generated image for whatever
+shot the playhead is on, with a slate carrying the shot number, framing and line. Anything
+not yet generated plays as its blocking and says so, greyed in the strip, so the cut works
+before the whole film has been paid for.
 
-**Visuals** on the toolbar opens the generation step: scene tabs across the top, every shot
-in the scene as a card showing the blocking and the generated image side by side, and
-Generate or Regenerate on each. There is a Generate this scene for the whole tab, and a
-Generate this shot in the shot inspector.
+The pictures are made here too, from the same shot panel you approved in: **Generate this
+shot**, **Generate the N missing in this scene**, what it will send, and the exact prompt.
+There is no separate generation screen — the cut is where the images live, and where you
+remake one you do not like.
 
 It runs on `fal-ai/nano-banana-2/edit`, which takes several reference images and reasons
 about what to change and what to preserve. So the references are **sent**, not described:
@@ -119,39 +120,8 @@ about what to change and what to preserve. So the references are **sent**, not d
   wardrobe, and to keep them the same person across every shot.
 
 Because the model follows instructions rather than a denoising strength, the control is
-**how closely to hold the blocking** — Exact tells it not to move the camera or anyone in
-frame, Loose lets it re-frame. Resolution is 1K, 2K or 4K, and the reference count is
-capped where you want it. Each card says how many images it will send and whose, and the
-exact prompt is visible before you spend anything.
-
-### Settings
-
-**Dashboard ▸ Settings**, in three tabs.
-
-**Keys** — Claude, Kimi, GPT/Codex and fal.ai, each with a light showing whether it is set.
-Every key stays in this browser and goes only to the service it belongs to. That also means
-nothing is shared between machines; for a deployed build they belong behind your own API,
-see BUILD-SPEC section 7.
-
-**Models** — each pipeline stage picks its own provider and model, because the stages do
-not ask the same thing:
-
-| stage | what it actually demands |
-|---|---|
-| Screenplay | long-form prose and format discipline; the longest single output |
-| World bible | research and the restraint to say what is unsettled — **uses web search** |
-| Location research | measurements of how a real place is built, without inventing one — **web search** |
-| Character sheets | concrete physical description grounded in a place and a job — **web search** |
-| Blocking | strict JSON full of numbers, and spatial sense; the stage most sensitive to a weak model |
-| Coverage | directorial judgement inside a rigid schema |
-| Shot chat | small fast edits; latency over depth |
-
-Assign a stage to a provider without web search and it says so, plainly: that stage will
-answer from memory and cite nothing. Model names are text fields with a default rather than
-a list, because they move faster than this file does.
-
-**Images** — the fal endpoint. Nano Banana 2 Edit is the default because it accepts several
-references and reasons about what to preserve.
+**how closely to hold the blocking** — Exact, Close or Loose — with resolution and the
+reference cap alongside it in **Settings ▸ Images**.
 
 ### Storage
 
