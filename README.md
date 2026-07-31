@@ -123,6 +123,21 @@ Because the model follows instructions rather than a denoising strength, the con
 **how closely to hold the blocking** — Exact, Close or Loose — with resolution and the
 reference cap alongside it in **Settings ▸ Images**.
 
+### Deliverables
+
+Everything the app made was glTF, JSON or MP4, none of which a producer, a 1st AD or an
+editor opens. Three formats that people on a set actually use:
+
+**Storyboard to print** builds an A4 document — frame, slate, dialogue, action and intent,
+grouped under its beat and scene — and hands it to the browser's print dialogue, which
+gives page setup and Save as PDF without shipping a PDF library.
+
+**Shot list `.csv`** carries twenty-four columns including in and out timecode, so it
+sorts, filters and prints in any spreadsheet.
+
+**Subtitles `.srt`** falls out of what is already there — every shot has a speaker, a line
+and a timing — so the cut can be watched with the dialogue on it.
+
 ### Checks
 
 `tools/check-undeclared.js` reports calls to names the file never declares. Three bugs have
@@ -173,6 +188,9 @@ Everything exportable is behind **Export** on the toolbar:
 | This shot, its one camera | `.glb` |
 | Every shot in the film | `.glb` |
 | Cast in exports | blocks · leads posed · all posed |
+| Storyboard to print | pdf, via the browser |
+| Shot list | `.csv` |
+| Subtitles | `.srt` |
 | Shot list | `.json` |
 | Baked keyframes | `.json` |
 | Current play mode | `.mp4` |
